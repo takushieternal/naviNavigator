@@ -134,6 +134,27 @@ header h1{color:var(--navi2); text-shadow:0 0 12px rgba(139,233,253,.5);}
 .popmenu{position:absolute; top:44px; right:10px; display:flex; flex-direction:column; gap:4px;
   background:var(--panel); border:3px solid var(--ink); padding:6px; z-index:30;}
 .popmenu .btn{text-align:left; white-space:nowrap;}
+.thread{fill:none; stroke-width:1.8; opacity:.3; pointer-events:stroke; transition:opacity .15s, stroke-width .15s;}
+.th-l{stroke:var(--gold);}
+.th-d{stroke:#f0a3ff;}
+.thread:hover, .thread.th-sel{opacity:.95; stroke-width:2.8;}
+.ctxmenu{position:fixed; z-index:60; display:flex; flex-direction:column; gap:2px;
+  background:var(--panel); border:3px solid var(--ink); padding:5px; min-width:180px;}
+.ctxmenu .btn{text-align:left; white-space:nowrap;}
+.ctxmenu .ctxh{font-size:10px; color:var(--navi); padding:3px 6px 1px; letter-spacing:.08em; text-transform:uppercase;}
+.dot, .acell, .adoor, .awg, .aport, .lnk{transition:opacity .15s;}
+#map.focus #dots .dot, #map.focus #threads .thread, #map.focus #atlasg .acell,
+#map.focus #atlasg .adoor, #map.focus #atlasg .awg, #map.focus #atlasg .aport,
+#map.focus #lnks path{opacity:.13;}
+#map.focus #trails{opacity:.18;}
+#map.focus .lit{opacity:1 !important;}
+#map.focus .thread.lit{opacity:.95 !important; stroke-width:2.8;}
+#map.linking{cursor:crosshair;}
+#pmap.focus #dots .dot, #pmap.focus #threads .thread, #pmap.focus #atlasg .acell,
+#pmap.focus #atlasg .adoor, #pmap.focus #atlasg .awg, #pmap.focus #atlasg .aport,
+#pmap.focus #lnks path{opacity:.13;}
+#pmap.focus #trails{opacity:.18;}
+#pmap.focus .lit{opacity:1 !important;}
 .tevt{color:var(--green);}
 
 /* ---------- combo popups ---------- */
@@ -394,6 +415,7 @@ kbd{background:#171323; border:2px solid var(--ink); padding:0 4px; font-size:10
       <button class="btn" id="zU">UW</button>
       <button class="btn" id="zA">All</button>
       <button class="btn" id="zArt" title="Toggle real game maps / schematic">ART</button>
+      <button class="btn" id="zPath" title="Toggle entrance path threads">⤳</button>
       <button class="btn" id="zPop" title="Pop out a live map window (second monitor / OBS)">⧉</button>
     </div>
     <div class="popmenu" id="popMenu" hidden>
@@ -402,6 +424,7 @@ kbd{background:#171323; border:2px solid var(--ink); padding:0 4px; font-size:10
       <button class="btn" data-pop="D">⧉ Dark World</button>
       <button class="btn" data-pop="U">⧉ Underworld atlas</button>
     </div>
+    <div class="ctxmenu" id="ctxMenu" hidden></div>
     <div id="tip" hidden></div>
   </div>
 
@@ -697,7 +720,7 @@ function timeStr(t){ const d = new Date(t); return ('0'+d.getHours()).slice(-2)+
 /* ============================================================
    State
    ============================================================ */
-let state = { assignments:{}, log:[], customs:[], seq:0, art:true, roomNames:{},
+let state = { assignments:{}, log:[], customs:[], seq:0, art:true, paths:true, roomNames:{},
   trk:{ url:'', auto:true, fog:true }, atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
 let selId = null;
 let filter = 'all';
@@ -792,6 +815,7 @@ function buildTerrain(){
   S('g', { id:'fog' }, vp);
   S('g', { id:'atlasg' }, vp);
   S('g', { id:'trails' }, vp);
+  S('g', { id:'threads' }, vp);
   S('g', { id:'lnks' }, vp);
   S('g', { id:'dots' }, vp);
 }
@@ -811,7 +835,9 @@ function buildDots(){
     g.addEventListener('click', ev => {
       ev.stopPropagation();
       if (dragged || adding) return;
+      if (linkFrom){ finishLink(e.id); return; }
       select(e.id);
+      setFocus({ pins:[e.id] });
     });
     g.addEventListener('pointerenter', () => tipShow(e.id));
     g.addEventListener('pointerleave', tipHide);
@@ -883,7 +909,7 @@ function renderLinks(){
     const sgn = ny < 0 ? 1 : -1; // bias upward
     const cxp = mx + nx*lift*sgn, cyp = my + ny*lift*sgn;
     const cross = e1.w !== e2.w;
-    S('path', { class: 'lnk' + (cross ? ' x' : ''), d:`M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${cxp.toFixed(1)} ${cyp.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}` }, gl);
+    S('path', { class: 'lnk' + (cross ? ' x' : ''), 'data-a':id, 'data-b':o, d:`M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${cxp.toFixed(1)} ${cyp.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}` }, gl);
   }
 }
 
@@ -1242,9 +1268,17 @@ map.addEventListener('pointercancel', endPointer);
 map.addEventListener('click', ev => {
   if (dragged) return;
   if (adding){ placePin(ev); return; }
+  const cell = ev.target.closest('.acell');
+  if (cell){ setFocus({ rooms:[+cell.getAttribute('data-room')] }); return; }
+  const th = ev.target.closest('.thread');
+  if (th){ setFocus({ pins:[th.getAttribute('data-eid')] }); return; }
+  const pt = ev.target.closest('.aport');
+  if (pt){ setFocus({ pins:[pt.getAttribute('data-eid')] }); return; }
+  const eg = ev.target.closest('.awg') || ev.target.closest('.adoor');
+  if (eg){ setFocus({ rooms:[+eg.getAttribute('data-a'), +eg.getAttribute('data-b')] }); return; }
   if (ev.target === map || ev.target.closest('#vp') === vpEl && !ev.target.closest('.dot')){
-    // background click: deselect
-    hideDetail(); updateDots();
+    // background click: deselect + clear focus
+    hideDetail(); updateDots(); setFocus(null);
   }
 });
 
@@ -1317,6 +1351,8 @@ function popPaint(p){
   try {
     const doc = p.win.document;
     doc.body.className = document.body.className;
+    const pm = doc.getElementById('pmap');
+    if (pm) pm.classList.toggle('focus', map.classList.contains('focus'));
     const g = doc.getElementById('pvp');
     if (g) g.innerHTML = $('vp').innerHTML;
     if (p.region === 'U'){
@@ -1348,6 +1384,192 @@ $('popMenu').addEventListener('click', ev => {
 document.addEventListener('click', () => {
   const m = $('popMenu');
   if (m && !m.hidden) m.hidden = true;
+  const c = $('ctxMenu');
+  if (c && !c.hidden) c.hidden = true;
+});
+
+/* ---- left-click focus: spotlight everything connected ---- */
+let FOCUS = null;
+function setFocus(seed){
+  FOCUS = seed && ((seed.pins && seed.pins.length) || (seed.rooms && seed.rooms.length)) ? seed : null;
+  applyFocus();
+  popSeq++;
+}
+function computeFocus(){
+  if (!FOCUS) return null;
+  const P = new Set(FOCUS.pins || []), R = new Set(FOCUS.rooms || []);
+  const at = state.atlas || {}, uw = at.uw || {};
+  for (const r of R){ for (const pt of ((uw[r] || {}).p || [])) P.add(pt.id); }
+  for (const p of [...P]){ const a = asg(p); if (a && a.link) P.add(a.link); }
+  for (const rk in uw){ for (const pt of (uw[rk].p || [])) if (P.has(pt.id)) R.add(+rk); }
+  for (const p of P){ const a = asg(p); if (a && a.room != null) R.add(a.room); }
+  const R2 = new Set(R);
+  for (const e of (at.eg || [])){
+    if (R.has(e.a) || R.has(e.b)){ R2.add(e.a); R2.add(e.b); }
+  }
+  return { P, R: R2 };
+}
+function applyFocus(){
+  const F = computeFocus();
+  map.classList.toggle('focus', !!F);
+  const lit = (el, on) => el.classList.toggle('lit', !!on);
+  for (const el of map.querySelectorAll('#dots .dot')) lit(el, F && F.P.has(el.getAttribute('data-id')));
+  for (const el of map.querySelectorAll('#threads .thread')) lit(el, F && F.P.has(el.getAttribute('data-eid')));
+  for (const el of map.querySelectorAll('#atlasg .acell')) lit(el, F && F.R.has(+el.getAttribute('data-room')));
+  for (const el of map.querySelectorAll('#atlasg .aport')) lit(el, F && F.P.has(el.getAttribute('data-eid')));
+  for (const el of map.querySelectorAll('#atlasg .adoor, #atlasg .awg'))
+    lit(el, F && F.R.has(+el.getAttribute('data-a')) && F.R.has(+el.getAttribute('data-b')));
+  for (const el of map.querySelectorAll('#lnks path'))
+    lit(el, F && F.P.has(el.getAttribute('data-a')) && F.P.has(el.getAttribute('data-b')));
+}
+
+/* ---- manual linking via two clicks ---- */
+let linkFrom = null;
+function startLink(id){
+  linkFrom = id;
+  map.classList.add('linking');
+  trkEvent('Listen! click another entrance to link with ' + nameOf(id) + ' — Esc cancels');
+  toast('Pick the other entrance');
+}
+function finishLink(id){
+  const from = linkFrom;
+  linkFrom = null;
+  map.classList.remove('linking');
+  if (!from || from === id){ trkEvent(''); return; }
+  pushUndo();
+  doLink(from, id);
+  state.seq++;
+  state.log.push({ s:state.seq, t:Date.now(), e:from, x:'⇆ ' + nameOf(id) + ' (manual)' });
+  trkEvent('Listen! linked ' + nameOf(from) + ' ⇆ ' + nameOf(id));
+  setFocus({ pins:[from] });
+  refresh(); save();
+  toast('Linked');
+}
+
+/* ---- right-click contextual menu ---- */
+let ctxEv = null;
+map.addEventListener('contextmenu', ev => {
+  ev.preventDefault();
+  if (adding) return;
+  ctxEv = { clientX: ev.clientX, clientY: ev.clientY };
+  const dot = ev.target.closest('.dot');
+  const cell = ev.target.closest('.acell');
+  const items = [];
+  if (dot){
+    const id = dot.getAttribute('data-id');
+    const a = asg(id) || {};
+    items.push(['h', null, nameOf(id)]);
+    items.push(['link', id, a.link ? '⇆ Re-link to…' : '⇆ Link to…']);
+    items.push(['dead', id, (a.deadEnd ? '☑' : '☐') + ' Dead end']);
+    items.push(['note', id, '✎ Add note…']);
+    if (a.dest || a.link || a.note || a.deadEnd) items.push(['clear', id, '🧹 Clear pin data']);
+    items.push(['center', id, '◎ Center here']);
+  } else if (cell){
+    const room = +cell.getAttribute('data-room');
+    items.push(['h', null, 'Room ' + hexw(room)]);
+    items.push(['rename', room, '✎ Rename room…']);
+    items.push(['zroom', room, '◎ Zoom to room']);
+  } else {
+    items.push(['h', null, 'Map']);
+    items.push(['addpin', null, '＋ Add custom pin here']);
+    items.push(['zhere', null, '◎ Zoom here']);
+    items.push(['zall', null, '⤢ Fit both worlds']);
+  }
+  ctxShow(items, ev.clientX, ev.clientY);
+});
+function ctxShow(items, x, y){
+  const m = $('ctxMenu');
+  m.innerHTML = '';
+  for (const it of items){
+    if (it[0] === 'h'){
+      const h = document.createElement('div');
+      h.className = 'ctxh';
+      h.textContent = it[2];
+      m.appendChild(h);
+      continue;
+    }
+    const b = document.createElement('button');
+    b.className = 'btn';
+    b.setAttribute('data-act', it[0]);
+    b.textContent = it[2];
+    b.addEventListener('click', ev2 => {
+      ev2.stopPropagation();
+      m.hidden = true;
+      ctxRun(it[0], it[1]);
+    });
+    m.appendChild(b);
+  }
+  m.hidden = false;
+  m.style.left = Math.min(x, (window.innerWidth || 1200) - 210) + 'px';
+  m.style.top = Math.min(y, (window.innerHeight || 800) - items.length*34 - 16) + 'px';
+}
+function ctxRun(act, arg){
+  if (act === 'link'){ startLink(arg); return; }
+  if (act === 'dead'){
+    pushUndo();
+    const a = ensureAsg(arg);
+    a.deadEnd = !a.deadEnd;
+    if (selId === arg) select(arg);
+    refresh(); save();
+    toast(a.deadEnd ? 'Marked dead end' : 'Dead end cleared');
+    return;
+  }
+  if (act === 'note'){
+    const t = window.prompt('Note for ' + nameOf(arg) + ':', '');
+    if (!t) return;
+    pushUndo();
+    const a = ensureAsg(arg);
+    a.note = a.note ? a.note + ' · ' + t : t;
+    if (selId === arg) select(arg);
+    refresh(); save();
+    toast('Note added');
+    return;
+  }
+  if (act === 'clear'){
+    pushUndo();
+    const a = asg(arg);
+    if (a && a.link){ const o = asg(a.link); if (o && o.link === arg) delete o.link; }
+    delete state.assignments[arg];
+    if (selId === arg) select(arg);
+    refresh(); save();
+    toast('Pin cleared');
+    return;
+  }
+  if (act === 'center'){ centerOn(arg); return; }
+  if (act === 'rename'){
+    const cur = (state.roomNames && state.roomNames[arg]) || ROOMS[arg] || '';
+    const t = window.prompt('Name for room ' + hexw(arg) + ':', cur);
+    if (t == null) return;
+    pushUndo();
+    state.roomNames = state.roomNames || {};
+    if (t.trim()) state.roomNames[arg] = t.trim();
+    else delete state.roomNames[arg];
+    renderAtlas(); renderThreads(); applyFocus(); refresh(); save();
+    toast('Room renamed');
+    return;
+  }
+  if (act === 'zroom'){
+    const c = atlasCellPt(arg, 256, 256);
+    fitRect(c[0] - ATLAS.CS*2.5, c[1] - ATLAS.CS*2.5, ATLAS.CS*5, ATLAS.CS*5);
+    return;
+  }
+  if (act === 'addpin'){ if (ctxEv) placePin(ctxEv); return; }
+  if (act === 'zhere'){
+    if (!ctxEv) return;
+    const wpt = worldPoint(ctxEv.clientX, ctxEv.clientY);
+    const k = Math.max(view.k, 2.2);
+    view = { x: 860 - wpt.x*k, y: 407 - wpt.y*k, k };
+    applyView();
+    return;
+  }
+  if (act === 'zall'){ fitRect(0, 0, 1720, 815); return; }
+}
+document.addEventListener('keydown', ev => {
+  if (ev.key !== 'Escape') return;
+  if (linkFrom){ linkFrom = null; map.classList.remove('linking'); trkEvent(''); return; }
+  const c = $('ctxMenu');
+  if (c && !c.hidden){ c.hidden = true; return; }
+  if (FOCUS) setFocus(null);
 });
 
 function centerOn(id){
@@ -1720,6 +1942,7 @@ function applyImport(text){
     seq: typeof j.seq === 'number' ? j.seq : (Array.isArray(j.log) ? j.log.length : 0),
     roomNames: (j.roomNames && typeof j.roomNames === 'object') ? j.roomNames : {},
     art: j.art !== false,
+    paths: j.paths !== false,
     trk: (j.trk && typeof j.trk.url === 'string') ? { url: j.trk.url, auto: j.trk.auto !== false, fog: j.trk.fog !== false } : (state.trk || { url:'', auto:true, fog:true }),
     atlas: (j.atlas && typeof j.atlas === 'object') ? j.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
   };
@@ -1733,7 +1956,7 @@ function applyImport(text){
 $('bReset').addEventListener('click', () => {
   confirmModal('Reset everything?', 'This wipes all mapped entrances, links, notes and the log. Undo can bring it back this session, and Export first is even safer.', 'Reset it', () => {
     pushUndo();
-    state = { assignments:{}, log:[], customs:[], seq:0, art: state.art !== false,
+    state = { assignments:{}, log:[], customs:[], seq:0, art: state.art !== false, paths: state.paths !== false,
       roomNames: state.roomNames || {}, trk: state.trk || { url:'', auto:true, fog:true },
       atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
     hideDetail();
@@ -1753,6 +1976,8 @@ $('bHelp').addEventListener('click', () => {
     '<p><b>Emulator link:</b> run <b>SNI</b> (or QUsb2Snes) and hook your emulator to it — snes9x-rr + Connector.lua, a snes9x-nwa build, BizHawk, RetroArch with the bsnes-mercury core, or an FXPak — then hit Connect. Entrances, connectors and dungeons map themselves as you play, and everything stays editable. Plain snes9x cannot expose memory, so use one of those builds. If the connection is blocked inside claude.ai, download the file and open it locally.</p>' +
     '<p><b>Auto-map atlas:</b> while connected, your overworld path draws onto both world maps, and every interior room you visit assembles into a stitched underworld atlas below them — the <b>UW</b> button jumps to it. Cells are tinted by dungeon and tagged with their floor; dashed trails mean the lower layer. Gold and pink door markers show where each room touches the Light or Dark World (hover one for the entrance name), bright ticks bridge doorways between adjacent rooms, and dashed green curves trace stairs, drops and warps between distant ones — the map a door-randomized seed needs. The overworld fogs itself too: screens you have not stepped on stay shaded until you do — toggle it in the Emulator Link card. For the real game maps, keep images/map.png and images/darkworld.png in an images folder next to this file: the ART button switches between them and the built-in schematic, and if the files are missing it falls back automatically. The log only records discoveries, so repeat trips just flash the pin.</p>' +
     '<p><b>Pop-out maps:</b> the ⧉ button opens any map — both worlds, either world alone, or the underworld atlas — in its own window that keeps updating live as you play. Perfect for a second monitor or an OBS window capture.</p>' +
+    '<p><b>Entrance paths:</b> thin gold and pink threads dive from each mapped entrance on the world maps down to the exact room it leads to in the underworld atlas — hover a thread or select a pin to light up its route. Toggle with the ⤳ button.</p>' +
+    '<p><b>Smart clicks:</b> left-click any pin, atlas room, thread or connection to spotlight everything it touches — its partner, rooms, paths and doorways — and click empty map (or press Esc) to clear. Right-click brings a quick menu: link two entrances, mark dead ends, add notes, rename rooms, drop custom pins, zoom anywhere.</p>' +
     '<p><b>Saving:</b> automatic. As a Claude artifact it saves to the cloud; saved as a local file it uses your browser\'s storage. Export makes a portable backup either way.</p>' +
     '<div class="row"><button class="btn gold" data-x="ok">Got it</button></div>',
     box => box.addEventListener('click', ev => {
@@ -1835,7 +2060,7 @@ function trailPush(segs, x, y, minD, brk, budget){
 let atlasTimer = null;
 function atlasDirty(){
   if (atlasTimer) return;
-  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); popSeq++; }, 700);
+  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); renderThreads(); applyFocus(); popSeq++; }, 700);
 }
 function renderTrails(){
   const g = $('trails'); if (!g) return;
@@ -1874,6 +2099,54 @@ function renderFog(){
       .textContent = n + '/64 explored';
   }
 }
+function atlasCellPt(r, x, y){
+  const sc = (ATLAS.CS - 6)/512;
+  return [ATLAS.X + (r & 0x0F)*ATLAS.CS + 3 + x*sc,
+          ATLAS.Y + ((r >> 4) & 0x1F)*ATLAS.CS + 3 + y*sc];
+}
+function renderThreads(){
+  const g = $('threads'); if (!g) return;
+  g.innerHTML = '';
+  if (state.paths === false) return;
+  const a = state.atlas; if (!a || !a.uw) return;
+  for (const rk of Object.keys(a.uw)){
+    const room = +rk;
+    if (((room >> 4) & 0x1F) >= ATLAS.ROWS) continue;
+    const R = a.uw[rk];
+    for (const p of (R.p || [])){
+      const e = byId(p.id); if (!e) continue;
+      const x1 = px(e), y1 = py(e);
+      const C = atlasCellPt(room, p.x, p.y);
+      const dy = Math.max(90, (C[1] - y1)*0.42);
+      const path = S('path', {
+        class:'thread ' + (p.w === 'D' ? 'th-d' : 'th-l') + (selId === p.id ? ' th-sel' : ''),
+        'data-eid': p.id,
+        d:'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) +
+          ' C' + x1.toFixed(1) + ' ' + (y1 + dy).toFixed(1) +
+          ' ' + C[0].toFixed(1) + ' ' + (C[1] - dy).toFixed(1) +
+          ' ' + C[0].toFixed(1) + ' ' + C[1].toFixed(1)
+      }, g);
+      S('title', null, path).textContent =
+        nameOf(p.id) + ' ⇄ ' + (resolveInterior(room, (R.d != null ? R.d : 0xFF)) || hexw(room));
+    }
+  }
+}
+function threadSel(){
+  const g = $('threads'); if (!g) return;
+  for (const t of g.children) t.classList.toggle('th-sel', t.getAttribute('data-eid') === selId);
+}
+function applyPaths(){
+  const on = state.paths !== false;
+  const b = $('zPath');
+  if (b) b.classList.toggle('on', on);
+  renderThreads();
+}
+$('zPath').addEventListener('click', () => {
+  state.paths = state.paths === false;
+  applyPaths();
+  popSeq++;
+  save();
+});
 const DGN_HUE = [210, 48, 110, 35, 268, 95, 285, 25, 322, 195, 48, 320, 14, 0];
 function atlasVisitedBounds(){
   const a = state.atlas;
@@ -1951,13 +2224,13 @@ function renderAtlas(){
     if (!vis(e.a) || !vis(e.b)) continue;
     const A = inCell(e.a, e.ax, e.ay), B = inCell(e.b, e.bx, e.by);
     if (e.k === 'door'){
-      S('line', { class:'adoor', x1:A[0].toFixed(1), y1:A[1].toFixed(1), x2:B[0].toFixed(1), y2:B[1].toFixed(1) }, g);
+      S('line', { class:'adoor', 'data-a':e.a, 'data-b':e.b, x1:A[0].toFixed(1), y1:A[1].toFixed(1), x2:B[0].toFixed(1), y2:B[1].toFixed(1) }, g);
       continue;
     }
     const mx = (A[0] + B[0])/2, my = (A[1] + B[1])/2;
     const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1;
     const bow = Math.min(26, 8 + L*0.12);
-    const wg = S('g', { class:'awg' }, g);
+    const wg = S('g', { class:'awg', 'data-a':e.a, 'data-b':e.b }, g);
     S('path', { class:'awarp', d:'M' + A[0].toFixed(1) + ' ' + A[1].toFixed(1) +
       ' Q' + (mx - dy/L*bow).toFixed(1) + ' ' + (my + dx/L*bow).toFixed(1) +
       ' ' + B[0].toFixed(1) + ' ' + B[1].toFixed(1) }, wg);
@@ -1970,7 +2243,7 @@ function renderAtlas(){
   for (const room of rooms){
     for (const p of (a.uw[room].p || [])){
       const P = inCell(room, p.x, p.y);
-      const pg = S('g', { class:'aport ' + (p.w === 'D' ? 'pd' : 'pl') }, g);
+      const pg = S('g', { class:'aport ' + (p.w === 'D' ? 'pd' : 'pl'), 'data-eid':p.id }, g);
       S('path', { d:'M' + (P[0]-3.6).toFixed(1) + ' ' + (P[1]+3.1).toFixed(1) +
         ' L' + P[0].toFixed(1) + ' ' + (P[1]-4).toFixed(1) +
         ' L' + (P[0]+3.6).toFixed(1) + ' ' + (P[1]+3.1).toFixed(1) + ' Z' }, pg);
@@ -2450,10 +2723,12 @@ $('ckFog').addEventListener('change', () => {
    ============================================================ */
 function refresh(){
   popSeq++;
+  threadSel();
   updateDots();
   renderLinks();
   renderLog();
   renderStats();
+  applyFocus();
 }
 function rebuild(){
   rebuildIndex();
@@ -2461,6 +2736,7 @@ function rebuild(){
   renderTrails();
   renderAtlas();
   renderFog();
+  renderThreads();
   refresh();
 }
 
@@ -2477,6 +2753,7 @@ function rebuild(){
       seq: typeof saved.seq === 'number' ? saved.seq : 0,
       roomNames: (saved.roomNames && typeof saved.roomNames === 'object') ? saved.roomNames : {},
       art: saved.art !== false,
+      paths: saved.paths !== false,
       trk: (saved.trk && typeof saved.trk.url === 'string') ? { url: saved.trk.url, auto: saved.trk.auto !== false, fog: saved.trk.fog !== false } : { url:'', auto:true },
       atlas: (saved.atlas && typeof saved.atlas === 'object') ? saved.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
     };
@@ -2485,6 +2762,7 @@ function rebuild(){
   if (state.trk && state.trk.auto === false) $('ckAuto').checked = false;
   if (state.trk && state.trk.fog === false) $('ckFog').checked = false;
   applyArt();
+  applyPaths();
   ensureAtlas();
   rebuild();
   paintSave(backend === 'memory' ? false : true);
