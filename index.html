@@ -155,6 +155,11 @@ header h1{color:var(--navi2); text-shadow:0 0 12px rgba(139,233,253,.5);}
 #pmap.focus #lnks path{opacity:.13;}
 #pmap.focus #trails{opacity:.18;}
 #pmap.focus .lit{opacity:1 !important;}
+.igrid{display:grid; grid-template-columns:repeat(2, 1fr); gap:4px;}
+.ichip{font-size:10.5px; padding:3px 5px; background:var(--panel2); border:2px solid var(--ink);
+  opacity:.32; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.ichip.on{opacity:1; border-color:var(--gold);}
+.ln.noe{color:var(--gold); cursor:default;}
 .tevt{color:var(--green);}
 
 /* ---------- combo popups ---------- */
@@ -351,6 +356,11 @@ kbd{background:#171323; border:2px solid var(--ink); padding:0 4px; font-size:10
       <label class="ck"><input type="checkbox" id="ckAuto" checked> Auto-map as I play</label>
       <label class="ck"><input type="checkbox" id="ckFog" checked> Shade unexplored overworld</label>
       <button class="btn gold wide" id="tConnect">Connect</button>
+    </section>
+
+    <section class="card">
+      <h2>► Items</h2>
+      <div id="itemGrid" class="igrid"></div>
     </section>
 
     <section class="card">
@@ -720,7 +730,7 @@ function timeStr(t){ const d = new Date(t); return ('0'+d.getHours()).slice(-2)+
 /* ============================================================
    State
    ============================================================ */
-let state = { assignments:{}, log:[], customs:[], seq:0, art:true, paths:true, roomNames:{},
+let state = { assignments:{}, log:[], customs:[], seq:0, art:true, paths:true, items:{}, roomNames:{},
   trk:{ url:'', auto:true, fog:true }, atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
 let selId = null;
 let filter = 'all';
@@ -1685,7 +1695,8 @@ function renderLog(){
   for (let i = state.log.length - 1; i >= 0; i--){
     const L = state.log[i];
     html += '<div class="lrow"><span class="ls">#'+L.s+'</span>' +
-            '<button type="button" class="ln" data-e="'+esc(L.e)+'">'+esc(nameOf(L.e))+'</button>' +
+            (L.e ? '<button type="button" class="ln" data-e="'+esc(L.e)+'">'+esc(nameOf(L.e))+'</button>'
+                 : '<span class="ln noe">★ item</span>') +
             '<span class="lx">'+esc(L.x)+'</span>' +
             '<span class="lt">'+timeStr(L.t)+'</span>' +
             '<button type="button" class="ld" data-i="'+i+'" title="remove log entry">✕</button></div>';
@@ -1694,7 +1705,7 @@ function renderLog(){
 }
 $('logList').addEventListener('click', ev => {
   const nb = ev.target.closest('.ln');
-  if (nb){ const id = nb.getAttribute('data-e'); select(id); centerOn(id); return; }
+  if (nb){ const id = nb.getAttribute('data-e'); if (id){ select(id); centerOn(id); } return; }
   const db = ev.target.closest('.ld');
   if (db){
     pushUndo();
@@ -1943,6 +1954,7 @@ function applyImport(text){
     roomNames: (j.roomNames && typeof j.roomNames === 'object') ? j.roomNames : {},
     art: j.art !== false,
     paths: j.paths !== false,
+    items: (j.items && typeof j.items === 'object') ? j.items : {},
     trk: (j.trk && typeof j.trk.url === 'string') ? { url: j.trk.url, auto: j.trk.auto !== false, fog: j.trk.fog !== false } : (state.trk || { url:'', auto:true, fog:true }),
     atlas: (j.atlas && typeof j.atlas === 'object') ? j.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
   };
@@ -1956,7 +1968,7 @@ function applyImport(text){
 $('bReset').addEventListener('click', () => {
   confirmModal('Reset everything?', 'This wipes all mapped entrances, links, notes and the log. Undo can bring it back this session, and Export first is even safer.', 'Reset it', () => {
     pushUndo();
-    state = { assignments:{}, log:[], customs:[], seq:0, art: state.art !== false, paths: state.paths !== false,
+    state = { assignments:{}, log:[], customs:[], seq:0, art: state.art !== false, paths: state.paths !== false, items:{},
       roomNames: state.roomNames || {}, trk: state.trk || { url:'', auto:true, fog:true },
       atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
     hideDetail();
@@ -1978,6 +1990,7 @@ $('bHelp').addEventListener('click', () => {
     '<p><b>Pop-out maps:</b> the ⧉ button opens any map — both worlds, either world alone, or the underworld atlas — in its own window that keeps updating live as you play. Perfect for a second monitor or an OBS window capture.</p>' +
     '<p><b>Entrance paths:</b> thin gold and pink threads dive from each mapped entrance on the world maps down to the exact room it leads to in the underworld atlas — hover a thread or select a pin to light up its route. Toggle with the ⤳ button.</p>' +
     '<p><b>Smart clicks:</b> left-click any pin, atlas room, thread or connection to spotlight everything it touches — its partner, rooms, paths and doorways — and click empty map (or press Esc) to clear. Right-click brings a quick menu: link two entrances, mark dead ends, add notes, rename rooms, drop custom pins, zoom anywhere.</p>' +
+    '<p><b>Item tracking:</b> while connected, every item you pick up — equipment, medallions, bottles, pendants, crystals, big keys, hearts — lights up in the Items card and lands in the log with where you found it ("★ Hookshot — Swamp Palace B1"). Exactly what a randomizer wants you to remember.</p>' +
     '<p><b>Saving:</b> automatic. As a Claude artifact it saves to the cloud; saved as a local file it uses your browser\'s storage. Export makes a portable backup either way.</p>' +
     '<div class="row"><button class="btn gold" data-x="ok">Got it</button></div>',
     box => box.addEventListener('click', ev => {
@@ -2269,6 +2282,7 @@ const trk = {
   ws:null, attached:false, devices:[], dev:'',
   pendBin:[], pendJson:[],
   phase:'boot', lastOW:null, lastUW:null, session:null,
+  lastSample:null, itemBase:null, itick:0,
   prevMod:-1, modStreak:0
 };
 let pumpToken = 0;
@@ -2429,6 +2443,12 @@ async function trkPump(){
     }
     if (pumpToken !== tok) return;
     try { trkFeed(a, b); } catch (e) {}
+    if ((trk.itick++ % 8) === 0){
+      try {
+        const ib = await trkRead('F5F340', 0x50);
+        if (pumpToken === tok) trkItems(ib);
+      } catch (e) {}
+    }
     await new Promise(r => setTimeout(r, 95));
   }
 }
@@ -2446,13 +2466,14 @@ function trkFeed(a, b){
     fl:   a[0x1FE],
     dgn:  b[0]
   };
+  trk.lastSample = s;
   if (s.mod === trk.prevMod) trk.modStreak++;
   else { trk.prevMod = s.mod; trk.modStreak = 1; }
   trkPaintLive(s);
   if (trk.modStreak < 2) return;             // resist transition + glitched reads
   const m = s.mod;
   if (m <= 0x05 || m === 0x14 || m === 0x17 || m === 0x1B){
-    trk.phase = 'boot'; trk.session = null; trk.lastOW = null; trk.lastUW = null; return;
+    trk.phase = 'boot'; trk.session = null; trk.lastOW = null; trk.lastUW = null; trk.itemBase = null; return;
   }
   if (m === 0x12){ trk.phase = 'other'; trk.session = null; trk.lastUW = null; return; }
   if (m === 0x09 && s.ind === 0){
@@ -2682,6 +2703,121 @@ function trkPaintLive(s){
   }
 }
 
+/* ---- item tracking: SRAM mirror $7EF340+ ---- */
+const ITEM_FLAGS = [
+  [0x02,'🪝','Hookshot','hook'], [0x05,'🔥','Fire Rod','frod'], [0x06,'❄️','Ice Rod','irod'],
+  [0x07,'✴️','Bombos','bombos'], [0x08,'🌀','Ether','ether'], [0x09,'🌋','Quake','quake'],
+  [0x0A,'🕯️','Lamp','lamp'], [0x0B,'🔨','Hammer','hammer'], [0x0D,'🦋','Bug Net','net'],
+  [0x0E,'📖','Book of Mudora','book'], [0x10,'➕','Cane of Somaria','som'],
+  [0x11,'✦','Cane of Byrna','byr'], [0x12,'🧥','Magic Cape','cape'],
+  [0x15,'👢','Pegasus Boots','boots'], [0x16,'🐟','Flippers','flip'], [0x17,'🌙','Moon Pearl','pearl']
+];
+const ITEM_PROGS = [
+  [0x00,'🏹','bow', {1:'Bow',2:'Bow & Arrows',3:'Silver Arrows',4:'Silver Arrows'},'Bow'],
+  [0x01,'🪃','boom',{1:'Boomerang',2:'Magical Boomerang'},'Boomerang'],
+  [0x04,'🍄','shroom',{1:'Mushroom',2:'Magic Powder'},'Mushroom'],
+  [0x0C,'🪈','flute',{1:'Shovel',2:'Flute',3:'Flute'},'Shovel / Flute'],
+  [0x13,'🪞','mirror',{1:'Magic Mirror',2:'Magic Mirror'},'Mirror'],
+  [0x14,'🧤','glove',{1:'Power Glove',2:"Titan's Mitt"},'Gloves'],
+  [0x19,'🗡️','sword',{1:'Fighter Sword',2:'Master Sword',3:'Tempered Sword',4:'Golden Sword'},'Sword'],
+  [0x1A,'🛡️','shield',{1:'Fighter Shield',2:'Red Shield',3:'Mirror Shield'},'Shield'],
+  [0x1B,'🎽','mail',{1:'Blue Mail',2:'Red Mail'},'Mail']
+];
+const ITEM_BITS = [
+  [0x26,2,'🗝️','Big Key','bigkey'],
+  [0x28,2,'🗺️','Dungeon Map','dmap'],
+  [0x24,2,'🧭','Compass','compass'],
+  [0x34,1,'🔻','Pendant','pend'],
+  [0x3A,1,'💠','Crystal','cry']
+];
+function popcnt(v){ let n = 0; while (v){ n++; v &= v - 1; } return n; }
+function itemLoc(){
+  const s = trk.lastSample;
+  if (!s) return '';
+  if (s.mod === 0x07){
+    const nm = resolveInterior(s.room, s.dgn) || ('Room ' + hexw(s.room));
+    const fl = (s.dgn !== 0xFF) ? (s.fl > 0x7F ? ' B' + (0x100 - s.fl) : ' ' + (s.fl + 1) + 'F') : '';
+    return nm + fl;
+  }
+  if (s.mod === 0x09 || s.mod === 0x0B){
+    const w = (s.area & 0x40) ? 'Dark World' : 'Light World';
+    const m = matchPin({ w:(s.area & 0x40) ? 'D' : 'L', area:s.area, xp:s.x / 40.96, yp:s.y / 40.96 });
+    return (m && !m.weak) ? w + ' near ' + nameOf(m.pin.id) : w;
+  }
+  return '';
+}
+function itemCtxPin(){
+  const s = trk.lastSample;
+  if (!s) return null;
+  if (s.mod === 0x07 && trk.session && trk.session.entryPinId) return trk.session.entryPinId;
+  if (s.mod === 0x09){
+    const m = matchPin({ w:(s.area & 0x40) ? 'D' : 'L', area:s.area, xp:s.x / 40.96, yp:s.y / 40.96 });
+    if (m && !m.weak) return m.pin.id;
+  }
+  return null;
+}
+function trkItems(b){
+  const m = trk.lastSample ? trk.lastSample.mod : 0;
+  if (!(m === 0x07 || m === 0x09 || m === 0x0B || m === 0x0E || m === 0x0F || m === 0x10)) return;
+  const cur = {};
+  for (const f of ITEM_FLAGS) cur[f[3]] = b[f[0]];
+  for (const f of ITEM_PROGS) cur[f[2]] = b[f[0]];
+  for (const f of ITEM_BITS) cur[f[4]] = b[f[0]] | (f[1] > 1 ? b[f[0] + 1] << 8 : 0);
+  let nb = 0;
+  for (let i = 0x1C; i <= 0x1F; i++) if (b[i]) nb++;
+  cur.bot = nb;
+  cur.hp = b[0x2C]; cur.hq = b[0x2B]; cur.mg = b[0x3B];
+  const base = trk.itemBase;
+  trk.itemBase = cur;
+  if (!base){ state.items = cur; renderItems(); save(); return; }
+  const gains = [];
+  for (const f of ITEM_FLAGS) if (cur[f[3]] > 0 && !(base[f[3]] > 0)) gains.push(f[2]);
+  for (const f of ITEM_PROGS) if (cur[f[2]] > (base[f[2]] || 0)) gains.push(f[3][cur[f[2]]] || f[4]);
+  for (const f of ITEM_BITS){
+    let nw = cur[f[4]] & ~(base[f[4]] || 0);
+    while (nw){ gains.push(f[3]); nw &= nw - 1; }
+  }
+  for (let i = (base.bot || 0); i < cur.bot; i++) gains.push('Bottle');
+  if (cur.hq > (base.hq || 0)) gains.push('Piece of Heart');
+  if (cur.hp - (base.hp || 0) >= 8) gains.push('Heart Container');
+  if (cur.mg === 1 && !(base.mg > 0)) gains.push('Half Magic');
+  if (cur.mg === 2 && (base.mg || 0) < 2) gains.push('Quarter Magic');
+  state.items = cur;
+  if (gains.length && $('ckAuto').checked){
+    const loc = itemLoc(), pin = itemCtxPin();
+    for (const gnm of gains){
+      state.seq++;
+      state.log.push({ s:state.seq, t:Date.now(), e:pin, x:'⚡ ★ ' + gnm + (loc ? ' — ' + loc : '') });
+    }
+    trkEvent('Hey! got ' + gains.join(', '));
+    renderItems();
+    refresh(); save();
+    return;
+  }
+  renderItems(); save();
+}
+function renderItems(){
+  const g = $('itemGrid'); if (!g) return;
+  const it = state.items || {};
+  const chip = (on, emo, label) =>
+    '<div class="ichip' + (on ? ' on' : '') + '">' + emo + ' ' + esc(label) + '</div>';
+  let h = '';
+  for (const f of ITEM_PROGS){
+    const v = it[f[2]] || 0;
+    h += chip(v > 0, f[1], v > 0 ? (f[3][v] || f[4]) : f[4]);
+  }
+  for (const f of ITEM_FLAGS) h += chip((it[f[3]] || 0) > 0, f[1], f[2]);
+  h += chip((it.bot || 0) > 0, '🧴', 'Bottles ×' + (it.bot || 0));
+  h += chip((it.bigkey || 0) > 0, '🗝️', 'Big Keys ×' + popcnt(it.bigkey || 0));
+  h += chip((it.dmap || 0) > 0, '🗺️', 'Maps ×' + popcnt(it.dmap || 0));
+  h += chip((it.compass || 0) > 0, '🧭', 'Compasses ×' + popcnt(it.compass || 0));
+  h += chip(popcnt(it.pend || 0) > 0, '🔻', 'Pendants ' + popcnt(it.pend || 0) + '/3');
+  h += chip(popcnt(it.cry || 0) > 0, '💠', 'Crystals ' + popcnt(it.cry || 0) + '/7');
+  h += chip(it.hp != null, '❤️', '♥ ' + Math.floor((it.hp || 24) / 8) + ((it.hq || 0) ? ' +' + it.hq + '/4' : ''));
+  h += chip((it.mg || 0) > 0, '✨', (it.mg === 2) ? 'Quarter Magic' : 'Half Magic');
+  g.innerHTML = h;
+}
+
 /* ---- teardown ---- */
 function trkDisconnect(msg){
   const ws = trk.ws;
@@ -2697,6 +2833,7 @@ function trkCleanup(msg, lamp){
   for (const p of trk.pendBin.splice(0)){ clearTimeout(p.timer); }
   for (const p of trk.pendJson.splice(0)){ clearTimeout(p.timer); }
   trk.session = null; trk.lastOW = null; trk.lastUW = null; trk.phase = 'boot';
+  trk.lastSample = null; trk.itemBase = null; trk.itick = 0;
   trk.prevMod = -1; trk.modStreak = 0;
   $('tDevRow').hidden = true;
   $('tConnect').textContent = 'Connect';
@@ -2737,6 +2874,7 @@ function rebuild(){
   renderAtlas();
   renderFog();
   renderThreads();
+  renderItems();
   refresh();
 }
 
@@ -2754,6 +2892,7 @@ function rebuild(){
       roomNames: (saved.roomNames && typeof saved.roomNames === 'object') ? saved.roomNames : {},
       art: saved.art !== false,
       paths: saved.paths !== false,
+      items: (saved.items && typeof saved.items === 'object') ? saved.items : {},
       trk: (saved.trk && typeof saved.trk.url === 'string') ? { url: saved.trk.url, auto: saved.trk.auto !== false, fog: saved.trk.fog !== false } : { url:'', auto:true },
       atlas: (saved.atlas && typeof saved.atlas === 'object') ? saved.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
     };
