@@ -124,6 +124,13 @@ select:focus{outline:none; border-color:var(--gold);}
 .hereorb{fill:var(--navi2); stroke:var(--navi); stroke-width:1.4;}
 .herepulse{fill:none; stroke:var(--navi); stroke-width:2; animation:herepulse 1.6s ease-out infinite;}
 @keyframes herepulse{0%{transform:scale(.35); opacity:.9;}70%{opacity:.25;}100%{transform:scale(1.7); opacity:0;}}
+.find{cursor:pointer; transition:opacity .15s;}
+.findbg{fill:#0d0a16; stroke:var(--gold); stroke-width:1.4; opacity:.92;}
+.findg{text-anchor:middle; pointer-events:none;}
+#map.focus #finds .find{opacity:.13;}
+#map.focus #finds .find.lit{opacity:1 !important;}
+#pmap.focus #finds .find{opacity:.13;}
+#pmap.focus #finds .find.lit{opacity:1 !important;}
 body.skin-img .mapimg{display:inline;}
 body.skin-photo .shotimg{display:inline;}
 body.skin-img .tw-l, body.skin-photo .tw-l{stroke:#ffd76a; opacity:.8;}
@@ -744,7 +751,7 @@ function timeStr(t){ const d = new Date(t); return ('0'+d.getHours()).slice(-2)+
 /* ============================================================
    State
    ============================================================ */
-let state = { assignments:{}, log:[], customs:[], seq:0, skin:'img', lock:true, paths:true, items:{}, roomNames:{},
+let state = { assignments:{}, log:[], customs:[], seq:0, skin:'img', lock:true, paths:true, items:{}, finds:[], roomNames:{},
   trk:{ url:'', auto:true, fog:true }, atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } } };
 let selId = null;
 let filter = 'all';
@@ -841,6 +848,7 @@ function buildTerrain(){
   S('g', { id:'atlasg' }, vp);
   S('g', { id:'trails' }, vp);
   S('g', { id:'threads' }, vp);
+  S('g', { id:'finds' }, vp);
   S('g', { id:'lnks' }, vp);
   S('g', { id:'dots' }, vp);
   S('g', { id:'hereg', style:'display:none' }, vp);
@@ -1296,6 +1304,12 @@ map.addEventListener('pointercancel', endPointer);
 map.addEventListener('click', ev => {
   if (dragged) return;
   if (adding){ placePin(ev); return; }
+  const fnd = ev.target.closest('.find');
+  if (fnd){
+    const r = fnd.getAttribute('data-room');
+    if (r != null) setFocus({ rooms:[+r] });
+    return;
+  }
   const cell = ev.target.closest('.acell');
   if (cell){ setFocus({ rooms:[+cell.getAttribute('data-room')] }); return; }
   const th = ev.target.closest('.thread');
@@ -1458,6 +1472,8 @@ function applyFocus(){
     lit(el, F && F.R.has(+el.getAttribute('data-a')) && F.R.has(+el.getAttribute('data-b')));
   for (const el of map.querySelectorAll('#lnks path'))
     lit(el, F && F.P.has(el.getAttribute('data-a')) && F.P.has(el.getAttribute('data-b')));
+  for (const el of map.querySelectorAll('#finds .find'))
+    lit(el, F && el.hasAttribute('data-room') && F.R.has(+el.getAttribute('data-room')));
 }
 
 /* ---- manual linking via two clicks ---- */
@@ -1986,6 +2002,7 @@ function applyImport(text){
     lock: j.lock !== false,
     paths: j.paths !== false,
     items: (j.items && typeof j.items === 'object') ? j.items : {},
+    finds: Array.isArray(j.finds) ? j.finds : [],
     trk: (j.trk && typeof j.trk.url === 'string') ? { url: j.trk.url, auto: j.trk.auto !== false, fog: j.trk.fog !== false } : (state.trk || { url:'', auto:true, fog:true }),
     atlas: (j.atlas && typeof j.atlas === 'object') ? j.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } }
   };
@@ -1999,7 +2016,7 @@ function applyImport(text){
 $('bReset').addEventListener('click', () => {
   confirmModal('Reset everything?', 'This wipes all mapped entrances, links, notes and the log. Undo can bring it back this session, and Export first is even safer.', 'Reset it', () => {
     pushUndo();
-    state = { assignments:{}, log:[], customs:[], seq:0, skin: state.skin || 'img', lock: state.lock !== false, paths: state.paths !== false, items:{},
+    state = { assignments:{}, log:[], customs:[], seq:0, skin: state.skin || 'img', lock: state.lock !== false, paths: state.paths !== false, items:{}, finds:[],
       roomNames: state.roomNames || {}, trk: state.trk || { url:'', auto:true, fog:true },
       atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } } };
     hideDetail();
@@ -2021,7 +2038,7 @@ $('bHelp').addEventListener('click', () => {
     '<p><b>Pop-out maps:</b> the ⧉ button opens any map — both worlds, either world alone, or the underworld atlas — in its own window that keeps updating live as you play. Perfect for a second monitor or an OBS window capture.</p>' +
     '<p><b>Entrance paths:</b> thin gold and pink threads dive from each mapped entrance on the world maps down to the exact room it leads to in the underworld atlas — hover a thread or select a pin to light up its route. Toggle with the ⤳ button.</p>' +
     '<p><b>Smart clicks:</b> left-click any pin, atlas room, thread or connection to spotlight everything it touches — its partner, rooms, paths and doorways — and click empty map (or press Esc) to clear. Right-click brings a quick menu: link two entrances, mark dead ends, add notes, rename rooms, drop custom pins, zoom anywhere.</p>' +
-    '<p><b>Item tracking:</b> while connected, every item you pick up — equipment, medallions, bottles, pendants, crystals, big keys, hearts — lights up in the Items card and lands in the log with where you found it ("★ Hookshot — Swamp Palace B1"). Exactly what a randomizer wants you to remember.</p>' +
+    '<p><b>Item tracking:</b> while connected, every item you pick up — equipment, medallions, bottles, pendants, crystals, big keys, hearts — lights up in the Items card and lands in the log with where you found it ("★ Hookshot — Swamp Palace B1"). Each find is also pinned to the map itself: a small icon sits exactly where you picked it up — inside the atlas room or out on the world map — hover it for the name, click it to spotlight the room. Exactly what a randomizer wants you to remember.</p>' +
     '<p><b>In-game photos:</b> real screenshots are impossible over usb2snes, so Navi does the next best thing — she reads each area\u2019s tile map the moment it loads and paints a floorplan photo: walls, floors, water, pits, stairs and doors. Every underworld room gets its photo inside the atlas automatically, and the world maps collect per-screen photos you can view with the <b>CAM</b> skin (the ART button now cycles art \u2192 photos \u2192 schematic). If the PNG art files are missing, photos take over automatically.</p>' +
     '<p><b>You are here:</b> while tracking, a little Navi hovers at Link\u2019s live position — gliding across the world maps outside and through the atlas rooms underground, pulsing so you can always find yourself on already-explored ground. She holds her spot through menus and fades out at the title screen.</p>' +
     '<p><b>Camera lock:</b> the ⌖ button (on by default) keeps the view glued to the player at whatever zoom you set — zooming in or out adjusts your follow distance without breaking the lock, and the camera snaps along when you dive into the underworld or pop back out. Dragging the map, fitting a world, or centering a pin releases it; tap ⌖ to snap back onto the player.</p>' +
@@ -2110,7 +2127,7 @@ function trailPush(segs, x, y, minD, brk, budget){
 let atlasTimer = null;
 function atlasDirty(){
   if (atlasTimer) return;
-  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); renderShots(); renderThreads(); applyFocus(); popSeq++; }, 700);
+  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); renderShots(); renderThreads(); renderFinds(); applyFocus(); popSeq++; }, 700);
 }
 function renderTrails(){
   const g = $('trails'); if (!g) return;
@@ -2126,6 +2143,29 @@ function renderTrails(){
     }
   }
 }
+/* ---- item find markers: icons where each item was picked up ---- */
+function renderFinds(){
+  const g = $('finds'); if (!g) return;
+  g.innerHTML = '';
+  for (const f of (state.finds || [])){
+    let x, y, r, fs;
+    if (f.k === 'u'){
+      if (((f.room >> 4) & 0x1F) >= ATLAS.ROWS) continue;
+      const c = atlasCellPt(f.room, f.x, f.y);
+      x = c[0]; y = c[1]; r = 4.6; fs = 6.5;
+    } else {
+      x = PANEL_X[f.w] + f.x/4096*MAPW;
+      y = MAPT + f.y/4096*MAPH;
+      r = 6.5; fs = 9;
+    }
+    const el = S('g', f.k === 'u' ? { class:'find', 'data-room':f.room } : { class:'find' }, g);
+    S('circle', { class:'findbg', cx:x.toFixed(1), cy:y.toFixed(1), r:r }, el);
+    S('text', { class:'findg', x:x.toFixed(1), y:(y + fs*0.36).toFixed(1), 'font-size':fs }, el)
+      .textContent = f.g;
+    S('title', null, el).textContent = f.n + ' — found here';
+  }
+}
+
 /* ---- "you are here": live Navi at Link's position ---- */
 let hereEls = null, hereLast = null;
 function hereInit(){
@@ -3059,26 +3099,39 @@ function trkItems(b){
   trk.itemBase = cur;
   if (!base){ state.items = cur; renderItems(); save(); return; }
   const gains = [];
-  for (const f of ITEM_FLAGS) if (cur[f[3]] > 0 && !(base[f[3]] > 0)) gains.push(f[2]);
-  for (const f of ITEM_PROGS) if (cur[f[2]] > (base[f[2]] || 0)) gains.push(f[3][cur[f[2]]] || f[4]);
+  for (const f of ITEM_FLAGS) if (cur[f[3]] > 0 && !(base[f[3]] > 0)) gains.push({ n:f[2], g:f[1] });
+  for (const f of ITEM_PROGS) if (cur[f[2]] > (base[f[2]] || 0)) gains.push({ n:f[3][cur[f[2]]] || f[4], g:f[1] });
   for (const f of ITEM_BITS){
     let nw = cur[f[4]] & ~(base[f[4]] || 0);
-    while (nw){ gains.push(f[3]); nw &= nw - 1; }
+    while (nw){ gains.push({ n:f[3], g:f[2] }); nw &= nw - 1; }
   }
-  for (let i = (base.bot || 0); i < cur.bot; i++) gains.push('Bottle');
-  if (cur.hq > (base.hq || 0)) gains.push('Piece of Heart');
-  if (cur.hp - (base.hp || 0) >= 8) gains.push('Heart Container');
-  if (cur.mg === 1 && !(base.mg > 0)) gains.push('Half Magic');
-  if (cur.mg === 2 && (base.mg || 0) < 2) gains.push('Quarter Magic');
+  for (let i = (base.bot || 0); i < cur.bot; i++) gains.push({ n:'Bottle', g:'🧴' });
+  if (cur.hq > (base.hq || 0)) gains.push({ n:'Piece of Heart', g:'❤️' });
+  if (cur.hp - (base.hp || 0) >= 8) gains.push({ n:'Heart Container', g:'❤️' });
+  if (cur.mg === 1 && !(base.mg > 0)) gains.push({ n:'Half Magic', g:'✨' });
+  if (cur.mg === 2 && (base.mg || 0) < 2) gains.push({ n:'Quarter Magic', g:'✨' });
   state.items = cur;
   if (gains.length && $('ckAuto').checked){
     const loc = itemLoc(), pin = itemCtxPin();
-    for (const gnm of gains){
+    const s2 = trk.lastSample;
+    let fan = 0;
+    state.finds = state.finds || [];
+    for (const gn of gains){
       state.seq++;
-      state.log.push({ s:state.seq, t:Date.now(), e:pin, x:'⚡ ★ ' + gnm + (loc ? ' — ' + loc : '') });
+      state.log.push({ s:state.seq, t:Date.now(), e:pin, x:'⚡ ★ ' + gn.g + ' ' + gn.n + (loc ? ' — ' + loc : '') });
+      if (s2 && state.finds.length < 400){
+        if (s2.mod === 0x07){
+          state.finds.push({ k:'u', room:s2.room, x:Math.min(500, (s2.x & 511) + fan*9), y:s2.y & 511, n:gn.n, g:gn.g });
+          fan++;
+        } else if (s2.mod === 0x09){
+          state.finds.push({ k:'o', w:(s2.area & 0x40) ? 'D' : 'L', x:Math.min(4080, s2.x + fan*36), y:s2.y, n:gn.n, g:gn.g });
+          fan++;
+        }
+      }
     }
-    trkEvent('Hey! got ' + gains.join(', '));
+    trkEvent('Hey! got ' + gains.map(gn => gn.n).join(', '));
     renderItems();
+    renderFinds();
     refresh(); save();
     return;
   }
@@ -3165,6 +3218,7 @@ function rebuild(){
   renderFog();
   renderShots();
   renderThreads();
+  renderFinds();
   renderItems();
   refresh();
 }
@@ -3185,6 +3239,7 @@ function rebuild(){
       lock: saved.lock !== false,
       paths: saved.paths !== false,
       items: (saved.items && typeof saved.items === 'object') ? saved.items : {},
+      finds: Array.isArray(saved.finds) ? saved.finds : [],
       trk: (saved.trk && typeof saved.trk.url === 'string') ? { url: saved.trk.url, auto: saved.trk.auto !== false, fog: saved.trk.fog !== false } : { url:'', auto:true },
       atlas: (saved.atlas && typeof saved.atlas === 'object') ? saved.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } }
     };
