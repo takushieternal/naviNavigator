@@ -112,10 +112,14 @@ select:focus{outline:none; border-color:var(--gold);}
 .fogcell{fill:#04060e; opacity:.55; pointer-events:none;}
 .fogct{font-size:11px; fill:var(--dim); text-anchor:end; letter-spacing:.08em;}
 .mapimg{display:none; image-rendering:pixelated;}
-body.artmode .mapimg{display:inline;}
-body.artmode .tw-l{stroke:#ffd76a; opacity:.8;}
-body.artmode .tw-d{stroke:#f0a3ff; opacity:.85;}
-body.artmode .fogcell{opacity:.62;}
+.shotimg{display:none; image-rendering:pixelated;}
+.fpimg{image-rendering:pixelated;}
+.aroom.ov{fill-opacity:.16;}
+body.skin-img .mapimg{display:inline;}
+body.skin-photo .shotimg{display:inline;}
+body.skin-img .tw-l, body.skin-photo .tw-l{stroke:#ffd76a; opacity:.8;}
+body.skin-img .tw-d, body.skin-photo .tw-d{stroke:#f0a3ff; opacity:.85;}
+body.skin-img .fogcell, body.skin-photo .fogcell{opacity:.62;}
 .zoomui .btn.on{border-color:var(--gold); color:var(--gold);}
 .adoor{stroke:var(--text); stroke-width:2.4; opacity:.95; stroke-linecap:round;}
 .awarp{fill:none; stroke:var(--green); stroke-width:1.6; stroke-dasharray:4 3; opacity:.85;}
@@ -730,8 +734,8 @@ function timeStr(t){ const d = new Date(t); return ('0'+d.getHours()).slice(-2)+
 /* ============================================================
    State
    ============================================================ */
-let state = { assignments:{}, log:[], customs:[], seq:0, art:true, paths:true, items:{}, roomNames:{},
-  trk:{ url:'', auto:true, fog:true }, atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
+let state = { assignments:{}, log:[], customs:[], seq:0, skin:'img', paths:true, items:{}, roomNames:{},
+  trk:{ url:'', auto:true, fog:true }, atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } } };
 let selId = null;
 let filter = 'all';
 let adding = false;
@@ -819,6 +823,7 @@ function buildTerrain(){
     im.setAttribute('href', iu);
     im.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', iu);
     im.addEventListener('error', artFallback);
+    S('image', { class:'shotimg', id:'shot' + w, x:0, y:0, width:MAPW, height:MAPH, preserveAspectRatio:'none' }, g);
     S('text', { class:'ptitle', x:MAPW/2, y:-22 }, g).textContent = (w==='L' ? '◐ LIGHT WORLD' : '◑ DARK WORLD');
   }
   // layers for trails, atlas, links + dots (world coordinates)
@@ -1304,11 +1309,18 @@ $('zD').addEventListener('click', () => fitRect(905, 15, 800, 790));
 $('zA').addEventListener('click', () => fitRect(0, 0, 1720, 815));
 
 function applyArt(){
-  const on = state.art !== false && !window.__artFail;
-  document.body.classList.toggle('artmode', on);
+  let eff = state.skin || 'img';
+  if (eff === 'img' && window.__artFail) eff = 'photo';
+  for (const k of ['img', 'photo', 'draw']) document.body.classList.toggle('skin-' + k, eff === k);
   popSeq++;
   const b = $('zArt');
-  if (b){ b.classList.toggle('on', on); b.hidden = !!window.__artFail; }
+  if (b){
+    b.classList.toggle('on', eff !== 'draw');
+    b.textContent = eff === 'img' ? 'ART' : (eff === 'photo' ? 'CAM' : 'DRAW');
+    b.title = eff === 'img' ? 'Game map art — click for captured photos'
+            : eff === 'photo' ? 'Captured photos — click for schematic'
+            : 'Schematic — click for game map art';
+  }
 }
 function artFallback(){
   if (window.__artFail) return;
@@ -1316,7 +1328,9 @@ function artFallback(){
   applyArt();
 }
 $('zArt').addEventListener('click', () => {
-  state.art = state.art === false;
+  const order = window.__artFail ? ['photo', 'draw'] : ['img', 'photo', 'draw'];
+  const cur = state.skin || 'img';
+  state.skin = order[(order.indexOf(cur) + 1) % order.length];
   applyArt();
   save();
 });
@@ -1952,11 +1966,11 @@ function applyImport(text){
     customs: Array.isArray(j.customs) ? j.customs : [],
     seq: typeof j.seq === 'number' ? j.seq : (Array.isArray(j.log) ? j.log.length : 0),
     roomNames: (j.roomNames && typeof j.roomNames === 'object') ? j.roomNames : {},
-    art: j.art !== false,
+    skin: (j.skin === 'photo' || j.skin === 'draw' || j.skin === 'img') ? j.skin : (j.art === false ? 'draw' : 'img'),
     paths: j.paths !== false,
     items: (j.items && typeof j.items === 'object') ? j.items : {},
     trk: (j.trk && typeof j.trk.url === 'string') ? { url: j.trk.url, auto: j.trk.auto !== false, fog: j.trk.fog !== false } : (state.trk || { url:'', auto:true, fog:true }),
-    atlas: (j.atlas && typeof j.atlas === 'object') ? j.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
+    atlas: (j.atlas && typeof j.atlas === 'object') ? j.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } }
   };
   ensureAtlas();
   hideDetail();
@@ -1968,9 +1982,9 @@ function applyImport(text){
 $('bReset').addEventListener('click', () => {
   confirmModal('Reset everything?', 'This wipes all mapped entrances, links, notes and the log. Undo can bring it back this session, and Export first is even safer.', 'Reset it', () => {
     pushUndo();
-    state = { assignments:{}, log:[], customs:[], seq:0, art: state.art !== false, paths: state.paths !== false, items:{},
+    state = { assignments:{}, log:[], customs:[], seq:0, skin: state.skin || 'img', paths: state.paths !== false, items:{},
       roomNames: state.roomNames || {}, trk: state.trk || { url:'', auto:true, fog:true },
-      atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
+      atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } } };
     hideDetail();
     rebuild(); save();
     toast('Fresh slate');
@@ -1991,6 +2005,7 @@ $('bHelp').addEventListener('click', () => {
     '<p><b>Entrance paths:</b> thin gold and pink threads dive from each mapped entrance on the world maps down to the exact room it leads to in the underworld atlas — hover a thread or select a pin to light up its route. Toggle with the ⤳ button.</p>' +
     '<p><b>Smart clicks:</b> left-click any pin, atlas room, thread or connection to spotlight everything it touches — its partner, rooms, paths and doorways — and click empty map (or press Esc) to clear. Right-click brings a quick menu: link two entrances, mark dead ends, add notes, rename rooms, drop custom pins, zoom anywhere.</p>' +
     '<p><b>Item tracking:</b> while connected, every item you pick up — equipment, medallions, bottles, pendants, crystals, big keys, hearts — lights up in the Items card and lands in the log with where you found it ("★ Hookshot — Swamp Palace B1"). Exactly what a randomizer wants you to remember.</p>' +
+    '<p><b>In-game photos:</b> real screenshots are impossible over usb2snes, so Navi does the next best thing — she reads each area\u2019s tile map the moment it loads and paints a floorplan photo: walls, floors, water, pits, stairs and doors. Every underworld room gets its photo inside the atlas automatically, and the world maps collect per-screen photos you can view with the <b>CAM</b> skin (the ART button now cycles art \u2192 photos \u2192 schematic). If the PNG art files are missing, photos take over automatically.</p>' +
     '<p><b>Saving:</b> automatic. As a Claude artifact it saves to the cloud; saved as a local file it uses your browser\'s storage. Export makes a portable backup either way.</p>' +
     '<div class="row"><button class="btn gold" data-x="ok">Got it</button></div>',
     box => box.addEventListener('click', ev => {
@@ -2044,6 +2059,9 @@ function ensureAtlas(){
   if (!a.seen || typeof a.seen !== 'object') a.seen = {};
   if (!a.seen.L || typeof a.seen.L !== 'object') a.seen.L = {};
   if (!a.seen.D || typeof a.seen.D !== 'object') a.seen.D = {};
+  if (!a.shot || typeof a.shot !== 'object') a.shot = {};
+  if (!a.shot.L || typeof a.shot.L !== 'object') a.shot.L = {};
+  if (!a.shot.D || typeof a.shot.D !== 'object') a.shot.D = {};
   if (!Array.isArray(a.eg)) a.eg = [];
   return a;
 }
@@ -2073,7 +2091,7 @@ function trailPush(segs, x, y, minD, brk, budget){
 let atlasTimer = null;
 function atlasDirty(){
   if (atlasTimer) return;
-  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); renderThreads(); applyFocus(); popSeq++; }, 700);
+  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); renderShots(); renderThreads(); applyFocus(); popSeq++; }, 700);
 }
 function renderTrails(){
   const g = $('trails'); if (!g) return;
@@ -2087,6 +2105,90 @@ function renderTrails(){
         pts += (PANEL_X[w] + s[i]/4096*MAPW).toFixed(1) + ',' + (MAPT + s[i+1]/4096*MAPH).toFixed(1) + ' ';
       S('polyline', { class:'trail ' + (w === 'L' ? 'tw-l' : 'tw-d'), points: pts }, g);
     }
+  }
+}
+/* ---- captured floorplan photos ($7F2000 tile attributes) ---- */
+function shotBucket(b){
+  if (b === 0x00) return 0;                                              // floor
+  if (b <= 0x03) return 1;                                               // wall
+  if (b === 0x08 || b === 0x09 || b === 0x0A) return 2;                  // water
+  if ((b >= 0x1C && b <= 0x1F) || b === 0x22 || b === 0x26 || (b >= 0x30 && b <= 0x38)) return 3;  // stairs
+  if (b === 0x20) return 4;                                              // pit
+  if (b >= 0x28 && b <= 0x2F) return 5;                                  // ledge
+  if (b >= 0x80) return 6;                                               // door / special
+  return 7;                                                              // feature
+}
+const SHOT_PAL = {
+  uw: ['#b3a47c','#181227','#2e6fb8','#f4b41a','#06050b','#857a58','#5fc861','#5d5375'],
+  L:  ['#4e8f3e','#473722','#2e6fb8','#e0c060','#06050b','#3c6e30','#f4b41a','#6d5e3c'],
+  D:  ['#97803f','#3a2b1d','#3c5f9e','#e0c060','#06050b','#74622f','#f0a3ff','#5c4a2e']
+};
+function shotEncode(buf){
+  let out = '', run = 1, prev = shotBucket(buf[0]);
+  for (let i = 1; i < buf.length; i++){
+    const v = shotBucket(buf[i]);
+    if (v === prev && run < 4095){ run++; continue; }
+    out += run + String.fromCharCode(97 + prev);
+    prev = v; run = 1;
+  }
+  return out + run + String.fromCharCode(97 + prev);
+}
+function shotDecode(rle){
+  const out = new Uint8Array(4096);
+  let i = 0;
+  rle.replace(/(\d+)([a-h])/g, (mm, n, c) => {
+    const v = c.charCodeAt(0) - 97;
+    for (let k = 0; k < +n && i < 4096; k++) out[i++] = v;
+    return '';
+  });
+  return out;
+}
+function shotPaint(cx, rle, pal, ox, oy){
+  const data = shotDecode(rle);
+  const img = cx.createImageData(64, 64);
+  const cols = SHOT_PAL[pal].map(h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]);
+  for (let i = 0; i < 4096; i++){
+    const c = cols[data[i]];
+    img.data[i*4] = c[0]; img.data[i*4+1] = c[1]; img.data[i*4+2] = c[2]; img.data[i*4+3] = 255;
+  }
+  cx.putImageData(img, ox, oy);
+}
+const SHOT_URLS = {};
+function shotURL(rle, pal){
+  const key = pal + '|' + rle;
+  if (key in SHOT_URLS) return SHOT_URLS[key];
+  let url = null;
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = 64; cv.height = 64;
+    const cx = cv.getContext && cv.getContext('2d');
+    if (cx){ shotPaint(cx, rle, pal, 0, 0); url = cv.toDataURL(); }
+  } catch (e) { url = null; }
+  SHOT_URLS[key] = url;
+  return url;
+}
+function setHref(el, u){
+  el.setAttribute('href', u);
+  el.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', u);
+}
+function renderShots(){
+  const a = state.atlas;
+  for (const w of ['L', 'D']){
+    const el = $('shot' + w);
+    if (!el) continue;
+    const cells = a && a.shot ? a.shot[w] : null;
+    const keys = cells ? Object.keys(cells) : [];
+    if (!keys.length){ el.removeAttribute('href'); continue; }
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = 512; cv.height = 512;
+      const cx = cv.getContext && cv.getContext('2d');
+      if (!cx) continue;
+      cx.fillStyle = '#0c0a14';
+      cx.fillRect(0, 0, 512, 512);
+      for (const k of keys) shotPaint(cx, cells[k], w, (k & 7)*64, (k >> 3)*64);
+      setHref(el, cv.toDataURL());
+    } catch (e) {}
   }
 }
 function renderFog(){
@@ -2201,7 +2303,12 @@ function renderAtlas(){
     const col = room & 0x0F, row = (room >> 4) & 0x1F;
     const x0 = ATLAS.X + col*ATLAS.CS, y0 = ATLAS.Y + row*ATLAS.CS;
     const cell = S('g', { class:'acell', 'data-room':room }, g);
-    const attrs = { x:x0, y:y0, width:ATLAS.CS, height:ATLAS.CS, class:'aroom' };
+    const fpu = R.fp ? shotURL(R.fp, 'uw') : null;
+    if (fpu){
+      const fim = S('image', { class:'fpimg', x:x0, y:y0, width:ATLAS.CS, height:ATLAS.CS, preserveAspectRatio:'none' }, cell);
+      setHref(fim, fpu);
+    }
+    const attrs = { x:x0, y:y0, width:ATLAS.CS, height:ATLAS.CS, class:'aroom' + (fpu ? ' ov' : '') };
     if (R.d != null && R.d !== 0xFF) attrs.style = 'fill:hsl(' + DGN_HUE[(R.d >> 1) % 14] + ' 32% 26%)';
     S('rect', attrs, cell);
     const sc = (ATLAS.CS - 6)/512;
@@ -2283,6 +2390,7 @@ const trk = {
   pendBin:[], pendJson:[],
   phase:'boot', lastOW:null, lastUW:null, session:null,
   lastSample:null, itemBase:null, itick:0,
+  shotReq:null, shotBusy:false, shotSkip:{},
   prevMod:-1, modStreak:0
 };
 let pumpToken = 0;
@@ -2449,6 +2557,16 @@ async function trkPump(){
         if (pumpToken === tok) trkItems(ib);
       } catch (e) {}
     }
+    if (trk.shotReq && !trk.shotBusy){
+      const req = trk.shotReq;
+      trk.shotReq = null;
+      trk.shotBusy = true;
+      try {
+        const sb = await trkRead('F62000', 0x1000);
+        if (pumpToken === tok) trkShot(sb, req);
+      } catch (e) {}
+      trk.shotBusy = false;
+    }
     await new Promise(r => setTimeout(r, 95));
   }
 }
@@ -2481,6 +2599,7 @@ function trkFeed(a, b){
     trk.lastOW = { w:(s.area & 0x40) ? 'D' : 'L', area:s.area, xp:s.x / 40.96, yp:s.y / 40.96 };
     trk.phase = 'ow';
     trkTrail(s);
+    trkShotWant(s);
     return;
   }
   if (m === 0x07 && s.ind === 1){
@@ -2498,6 +2617,7 @@ function trkFeed(a, b){
     trk.lastUW = { room:s.room, x:s.x & 511, y:s.y & 511, ax:s.x, ay:s.y };
     trk.phase = 'uw';
     trkTrail(s);
+    trkShotWant(s);
     return;
   }
   if (m === 0x15){ trk.lastUW = null; return; }   // mirror warp: don't fake an edge
@@ -2703,6 +2823,52 @@ function trkPaintLive(s){
   }
 }
 
+/* ---- floorplan capture: one $7F2000 read per new room / screen ---- */
+function trkShotWant(s){
+  if (!$('ckAuto').checked || trk.shotBusy || trk.shotReq || trk.modStreak < 3) return;
+  const a = ensureAtlas();
+  if (s.mod === 0x07){
+    const R = a.uw[s.room];
+    if (R && !R.fp && !trk.shotSkip['u' + s.room])
+      trk.shotReq = { kind:'uw', room:s.room };
+    return;
+  }
+  if (s.mod === 0x09){
+    const lx = s.x & 511, ly = s.y & 511;
+    if (lx < 64 || lx > 447 || ly < 64 || ly > 447) return;
+    const fc = s.x >> 9, fr = s.y >> 9;
+    if (fc > 7 || fr > 7) return;
+    const w = (s.area & 0x40) ? 'D' : 'L';
+    const cell = (fr << 3) | fc;
+    if (!a.shot[w][cell] && !trk.shotSkip[w + cell])
+      trk.shotReq = { kind:'ow', w, cell };
+  }
+}
+function trkShot(buf, req){
+  const s = trk.lastSample;
+  if (!s) return;
+  const hist = [0,0,0,0,0,0,0,0];
+  for (let i = 0; i < 4096; i++) hist[shotBucket(buf[i])]++;
+  const ok = hist[0] > 4096*0.08 && hist[0] < 4096*0.985 && (hist[1] + hist[4]) > 4096*0.01;
+  const rle = ok ? shotEncode(buf) : null;
+  if (req.kind === 'uw'){
+    if (s.mod !== 0x07 || s.room !== req.room || !rle || rle.length > 6000){
+      trk.shotSkip['u' + req.room] = 1;
+      return;
+    }
+    const R = ensureAtlas().uw[req.room];
+    if (R){ R.fp = rle; atlasDirty(); save(); }
+    return;
+  }
+  const fc = s.x >> 9, fr = s.y >> 9;
+  if (s.mod !== 0x09 || ((fr << 3) | fc) !== req.cell || ((s.area & 0x40) ? 'D' : 'L') !== req.w || !rle || rle.length > 6000){
+    trk.shotSkip[req.w + req.cell] = 1;
+    return;
+  }
+  ensureAtlas().shot[req.w][req.cell] = rle;
+  atlasDirty(); save();
+}
+
 /* ---- item tracking: SRAM mirror $7EF340+ ---- */
 const ITEM_FLAGS = [
   [0x02,'🪝','Hookshot','hook'], [0x05,'🔥','Fire Rod','frod'], [0x06,'❄️','Ice Rod','irod'],
@@ -2834,6 +3000,7 @@ function trkCleanup(msg, lamp){
   for (const p of trk.pendJson.splice(0)){ clearTimeout(p.timer); }
   trk.session = null; trk.lastOW = null; trk.lastUW = null; trk.phase = 'boot';
   trk.lastSample = null; trk.itemBase = null; trk.itick = 0;
+  trk.shotReq = null; trk.shotBusy = false;
   trk.prevMod = -1; trk.modStreak = 0;
   $('tDevRow').hidden = true;
   $('tConnect').textContent = 'Connect';
@@ -2873,6 +3040,7 @@ function rebuild(){
   renderTrails();
   renderAtlas();
   renderFog();
+  renderShots();
   renderThreads();
   renderItems();
   refresh();
@@ -2890,11 +3058,11 @@ function rebuild(){
       customs: Array.isArray(saved.customs) ? saved.customs : [],
       seq: typeof saved.seq === 'number' ? saved.seq : 0,
       roomNames: (saved.roomNames && typeof saved.roomNames === 'object') ? saved.roomNames : {},
-      art: saved.art !== false,
+      skin: (saved.skin === 'photo' || saved.skin === 'draw' || saved.skin === 'img') ? saved.skin : (saved.art === false ? 'draw' : 'img'),
       paths: saved.paths !== false,
       items: (saved.items && typeof saved.items === 'object') ? saved.items : {},
       trk: (saved.trk && typeof saved.trk.url === 'string') ? { url: saved.trk.url, auto: saved.trk.auto !== false, fog: saved.trk.fog !== false } : { url:'', auto:true },
-      atlas: (saved.atlas && typeof saved.atlas === 'object') ? saved.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
+      atlas: (saved.atlas && typeof saved.atlas === 'object') ? saved.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} }, shot:{ L:{}, D:{} } }
     };
   }
   if (state.trk && state.trk.url) $('tUrl').value = state.trk.url;
