@@ -1,0 +1,2397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrance Mapper · ALTTP Randomizer</title>
+<style>
+:root{
+  --bg:#14121d; --panel:#231d31; --panel2:#2d2640; --ink:#0b0a12;
+  --text:#ebe3cb; --dim:#9a91b5; --gold:#f4b41a; --green:#5fc861;
+  --blue:#58a6e8; --red:#d4504a; --violet:#c084fc;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+[hidden]{display:none !important;}
+html,body{height:100%;}
+body{
+  background:var(--bg);
+  background-image:repeating-conic-gradient(#16141f 0% 25%, #14121d 0% 50%);
+  background-size:6px 6px;
+  color:var(--text);
+  font:12px/1.45 "Courier New", ui-monospace, Menlo, Consolas, monospace;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+button,input,textarea,select{font:inherit; color:inherit;}
+h1,h2{text-transform:uppercase; letter-spacing:2px;}
+
+/* ---------- header ---------- */
+header{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:8px 12px; background:var(--panel);
+  border-bottom:4px solid var(--ink); flex:0 0 auto;
+}
+.brand{display:flex; align-items:center; gap:10px;}
+.triforce{color:var(--gold); font-size:11px; line-height:.62; text-align:center; text-shadow:2px 2px 0 var(--ink); user-select:none;}
+h1{font-size:16px; font-weight:900; text-shadow:2px 2px 0 var(--ink);}
+.sub{font-size:10px; color:var(--dim); letter-spacing:1px;}
+.stats{font-size:11px; letter-spacing:.5px; line-height:1.7;}
+.stats b{color:var(--gold);} .stats .g{color:var(--green);} .stats .u{color:var(--dim);}
+.stats .l{color:var(--blue);} .stats .d{color:var(--red);}
+.hbtns{display:flex; gap:6px; flex-wrap:wrap; margin-left:auto;}
+.save{font-size:10px; letter-spacing:1px; color:var(--green); width:100%; text-align:right;}
+.save.warn{color:var(--gold);}
+
+/* ---------- pixel buttons ---------- */
+.btn{
+  background:var(--panel2); border:3px solid var(--ink); cursor:pointer;
+  padding:5px 10px; font-size:11px; font-weight:bold; text-transform:uppercase;
+  letter-spacing:1px; box-shadow:3px 3px 0 var(--ink); color:var(--text);
+}
+.btn:hover{background:#3a3254;}
+.btn:active{transform:translate(3px,3px); box-shadow:none;}
+.btn:focus-visible{outline:2px dashed var(--gold); outline-offset:2px;}
+.btn.gold{background:var(--gold); color:var(--ink);}
+.btn.gold:hover{background:#ffc83d;}
+.btn.danger{background:#5a2622;}
+.btn.danger:hover{background:#7a332d;}
+.btn.wide{width:100%; margin-top:8px;}
+
+/* ---------- layout ---------- */
+main{flex:1 1 auto; display:grid; grid-template-columns:292px 1fr 300px; min-height:0;}
+.side, .logside{
+  background:var(--panel); overflow-y:auto; padding:10px; min-height:0;
+}
+.side{border-right:4px solid var(--ink);}
+.logside{border-left:4px solid var(--ink);}
+.card{
+  background:var(--panel2); border:3px solid var(--ink);
+  box-shadow:3px 3px 0 var(--ink); padding:10px; margin-bottom:12px;
+}
+.card h2{font-size:11px; color:var(--gold); margin-bottom:8px;}
+label{display:block; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin:8px 0 3px;}
+input[type=text], input:not([type]), textarea{
+  width:100%; background:#171323; border:3px solid var(--ink);
+  padding:6px 7px; font-size:12px; color:var(--text);
+}
+input:focus, textarea:focus{outline:none; border-color:var(--gold);}
+textarea{resize:vertical;}
+.ck{display:flex; align-items:center; gap:6px; cursor:pointer; margin-top:6px; color:var(--text); text-transform:none; font-size:11px;}
+.ck input{accent-color:var(--gold);}
+.row{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
+.shake{animation:shake .3s;}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ---------- emulator link ---------- */
+select{
+  width:100%; background:#171323; border:3px solid var(--ink);
+  padding:6px 7px; font-size:12px; color:var(--text); font:inherit;
+}
+select:focus{outline:none; border-color:var(--gold);}
+.trkstat{display:flex; align-items:center; gap:7px; margin-top:9px; font-size:11px; color:var(--text);}
+.lamp{width:10px; height:10px; flex:0 0 auto; background:#3a3450; border:2px solid var(--ink);}
+.lamp.wait{background:var(--gold); animation:lampblink 1s steps(2) infinite;}
+.lamp.ok{background:var(--green);}
+.lamp.err{background:var(--red);}
+@keyframes lampblink{50%{opacity:.25}}
+.trklive{font-size:10px; color:var(--dim); margin-top:5px; min-height:12px; letter-spacing:.5px;}
+
+/* ---------- trails & underworld atlas ---------- */
+.trail{fill:none; stroke-linejoin:round; stroke-linecap:round; pointer-events:none;}
+.tw-l{stroke:var(--gold); opacity:.45; stroke-width:2.4;}
+.tw-d{stroke:var(--violet); opacity:.5; stroke-width:2.4;}
+.apanel{fill:var(--panel); stroke:var(--ink); stroke-width:4;}
+.aroom{fill:var(--panel2); stroke:var(--ink); stroke-width:2;}
+.acell:hover .aroom{stroke:var(--gold);}
+.atr-u{stroke:var(--text); opacity:.85; stroke-width:1.6;}
+.atr-l{stroke:var(--dim); opacity:.85; stroke-width:1.5; stroke-dasharray:3 2;}
+.albl{font-size:6.5px; fill:var(--dim); pointer-events:none;}
+.afl{font-size:6.5px; fill:var(--gold); text-anchor:end; pointer-events:none;}
+.aent{fill:var(--gold); stroke:var(--ink); stroke-width:1.5;}
+.ahint{font-size:11px; fill:var(--dim); text-anchor:middle;}
+.fogcell{fill:#04060e; opacity:.55; pointer-events:none;}
+.fogct{font-size:11px; fill:var(--dim); text-anchor:end; letter-spacing:.08em;}
+.mapimg{display:none; image-rendering:pixelated;}
+body.artmode .mapimg{display:inline;}
+body.artmode .tw-l{stroke:#ffd76a; opacity:.8;}
+body.artmode .tw-d{stroke:#f0a3ff; opacity:.85;}
+body.artmode .fogcell{opacity:.62;}
+.zoomui .btn.on{border-color:var(--gold); color:var(--gold);}
+.adoor{stroke:var(--text); stroke-width:2.4; opacity:.95; stroke-linecap:round;}
+.awarp{fill:none; stroke:var(--green); stroke-width:1.6; stroke-dasharray:4 3; opacity:.85;}
+.awend{fill:var(--green); opacity:.9;}
+.awg:hover .awarp{opacity:1; stroke-width:2.2;}
+.aport path{stroke:var(--ink); stroke-width:1;}
+.aport.pl path{fill:var(--gold);}
+.aport.pd path{fill:#f0a3ff;}
+.tevt{color:var(--green);}
+
+/* ---------- combo popups ---------- */
+.cwrap{position:relative;}
+.pop{
+  position:absolute; left:0; right:0; top:100%; z-index:60;
+  background:var(--panel); border:3px solid var(--ink);
+  box-shadow:4px 4px 0 var(--ink); max-height:240px; overflow-y:auto;
+}
+.pop .grp{font-size:9px; color:var(--gold); letter-spacing:1px; text-transform:uppercase; padding:5px 8px 2px; background:#1b1626; position:sticky; top:0;}
+.pop .it{display:block; width:100%; text-align:left; background:none; border:0; padding:5px 8px; cursor:pointer; font-size:11.5px;}
+.pop .it .s{color:var(--dim); font-size:9.5px; margin-left:6px;}
+.pop .it:hover, .pop .it.act{background:#3a3254;}
+
+/* ---------- chips / legend ---------- */
+.chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px;}
+.chip{background:#171323; border:2px solid var(--ink); padding:3px 7px; font-size:10px; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);}
+.chip.on{background:var(--gold); color:var(--ink); font-weight:bold;}
+.legend div{display:flex; align-items:center; gap:8px; font-size:11px; margin:4px 0;}
+.sw{width:13px; height:13px; border:2px solid var(--ink); display:inline-block; flex:0 0 auto;}
+.sw.unknown{background:#9aa0b5;} .sw.done{background:var(--green);}
+.sw.dungeon{background:var(--gold);} .sw.link{background:var(--blue);}
+.sw.dead{background:var(--red);} .sw.drop{background:#3d3a52; border-radius:50%;}
+
+/* ---------- map ---------- */
+.maparea{position:relative; min-width:0; min-height:0; overflow:hidden;}
+#map{width:100%; height:100%; display:block; touch-action:none; cursor:grab;}
+#map.adding{cursor:crosshair;}
+#map:active{cursor:grabbing;}
+.zoomui{position:absolute; top:10px; right:10px; display:flex; gap:5px;}
+.zoomui .btn{padding:4px 8px;}
+#tip{
+  position:fixed; z-index:90; pointer-events:none; max-width:240px;
+  background:var(--panel); border:3px solid var(--gold); padding:7px 9px;
+  box-shadow:4px 4px 0 var(--ink); font-size:11px;
+}
+#tip .tn{font-weight:bold; color:var(--gold); text-transform:uppercase; letter-spacing:.5px;}
+#tip .tm{color:var(--dim); font-size:9.5px; letter-spacing:1px;}
+#tip .ta{margin-top:3px;}
+#tip .tnote{color:var(--violet); margin-top:2px; font-style:italic;}
+
+/* svg terrain */
+.tbase{stroke:var(--ink); stroke-width:5;}
+.tL .tbase{fill:#6d9a4d;} .tD .tbase{fill:#5d5070;}
+.tL .tmnt{fill:#a8895f;} .tD .tmnt{fill:#6e5546;}
+.tL .twood{fill:#3c6b38;} .tD .twood{fill:#352b4a;}
+.tL .tlake{fill:#3f72ad;} .tD .tlake{fill:#2c4a72;}
+.tL .tdes{fill:#cdb878;} .tD .tdes{fill:#93805b;}
+.tL .tvil{fill:#84a55c;} .tD .tvil{fill:#6b5b78;}
+.tL .triv{stroke:#3f72ad;} .tD .triv{stroke:#2c4a72;}
+.triv{fill:none; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; opacity:.9;}
+.tmnt,.twood,.tdes,.tvil{opacity:.92; stroke:rgba(11,10,18,.35); stroke-width:2;}
+.tlbl{fill:rgba(10,9,16,.55); font-size:13px; font-weight:bold; letter-spacing:2px; text-anchor:middle; pointer-events:none;}
+.ptitle{fill:var(--gold); font-size:22px; font-weight:900; letter-spacing:4px; text-anchor:middle; paint-order:stroke; stroke:var(--ink); stroke-width:5;}
+
+/* svg dots */
+.dot{cursor:pointer;}
+.dot rect, .dot circle{stroke:var(--ink); stroke-width:2.5; transition:transform .12s; transform-box:fill-box; transform-origin:center;}
+.dot:hover rect, .dot:hover circle{transform:scale(1.45); stroke:#fff;}
+.dot.st-unknown rect{fill:#9aa0b5;} .dot.st-unknown circle{fill:#3d3a52;}
+.dot.st-done rect, .dot.st-done circle{fill:var(--green);}
+.dot.st-dungeon rect, .dot.st-dungeon circle{fill:var(--gold);}
+.dot.st-link rect, .dot.st-link circle{fill:var(--blue);}
+.dot.st-dead rect, .dot.st-dead circle{fill:var(--red);}
+.dot.sel rect, .dot.sel circle{stroke:#fff; stroke-dasharray:3 2;}
+.dot .nm{
+  fill:#f5efdb; font-size:9px; text-anchor:middle; paint-order:stroke;
+  stroke:var(--ink); stroke-width:2.5; display:none; pointer-events:none;
+}
+.dot .ord{
+  fill:#fff; font-size:10px; font-weight:bold; text-anchor:middle;
+  paint-order:stroke; stroke:var(--ink); stroke-width:2.5; display:none; pointer-events:none;
+}
+#map.show-names .dot .nm{display:block;}
+#map.show-order .dot .ord.has{display:block;}
+.dot.sel .nm, .dot.match .nm{display:block;}
+.dot.dimmed{opacity:.18;}
+.dot.fhide{display:none;}
+.dot.match rect, .dot.match circle{animation:pulse 1s infinite;}
+@keyframes pulse{50%{transform:scale(1.7);}}
+.dot.flash rect, .dot.flash circle{animation:pulse .5s 2;}
+.lnk{fill:none; stroke:var(--blue); stroke-width:3.5; opacity:.85;}
+.lnk.x{stroke:var(--violet); stroke-dasharray:9 6;}
+
+/* ---------- log ---------- */
+.logside h2{font-size:11px; color:var(--gold); margin-bottom:8px;}
+.lrow{
+  background:var(--panel2); border:2px solid var(--ink); padding:5px 7px;
+  margin-bottom:6px; font-size:11px; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:baseline;
+}
+.lrow .ls{color:var(--gold); font-weight:bold;}
+.lrow .ln{background:none; border:0; padding:0; cursor:pointer; color:var(--text); font-weight:bold; text-decoration:underline; text-underline-offset:2px;}
+.lrow .ln:hover{color:var(--gold);}
+.lrow .lx{color:var(--green);}
+.lrow .lt{color:var(--dim); font-size:9.5px; margin-left:auto;}
+.lrow .ld{background:none; border:0; cursor:pointer; color:var(--dim); padding:0 2px;}
+.lrow .ld:hover{color:var(--red);}
+.lempty{color:var(--dim); font-size:11px; padding:6px 2px;}
+
+/* ---------- modal / toast ---------- */
+#modal{position:fixed; inset:0; z-index:100; background:rgba(8,6,14,.78); display:flex; align-items:center; justify-content:center; padding:16px;}
+.mbox{background:var(--panel); border:4px solid var(--ink); box-shadow:8px 8px 0 var(--ink); padding:16px; max-width:520px; width:100%; max-height:86vh; overflow-y:auto;}
+.mbox h2{font-size:13px; color:var(--gold); margin-bottom:10px;}
+.mbox p{margin:6px 0; font-size:12px;}
+.mbox textarea{width:100%; height:180px; font-size:10.5px; margin-top:6px;}
+.mbox .row{justify-content:flex-end;}
+#toast{
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:120;
+  background:var(--gold); color:var(--ink); font-weight:bold; font-size:11px;
+  letter-spacing:1px; text-transform:uppercase; padding:7px 14px;
+  border:3px solid var(--ink); box-shadow:4px 4px 0 var(--ink);
+}
+kbd{background:#171323; border:2px solid var(--ink); padding:0 4px; font-size:10px;}
+
+/* ---------- scrollbars / responsive ---------- */
+::-webkit-scrollbar{width:10px; height:10px;}
+::-webkit-scrollbar-track{background:var(--panel);}
+::-webkit-scrollbar-thumb{background:var(--panel2); border:2px solid var(--ink);}
+@media (max-width:1080px){
+  body{overflow:auto;}
+  main{display:flex; flex-direction:column;}
+  .maparea{order:0; height:58vh; flex:0 0 auto; border-bottom:4px solid var(--ink);}
+  .side{order:1; border-right:0; max-height:none;}
+  .logside{order:2; border-left:0;}
+  .save{text-align:left;}
+}
+@media (prefers-reduced-motion:reduce){
+  .dot rect,.dot circle{transition:none;}
+  .dot.match rect,.dot.match circle,.dot.flash rect,.dot.flash circle{animation:none;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="triforce">▲<br>▲▲</div>
+    <div>
+      <h1>Entrance Mapper</h1>
+      <div class="sub">A LINK TO THE PAST · RANDOMIZER TRANSIT LOG</div>
+    </div>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="hbtns">
+    <button class="btn" id="bUndo" title="Ctrl+Z">⟲ Undo</button>
+    <button class="btn" id="bCopy">Copy List</button>
+    <button class="btn" id="bExport">Export</button>
+    <button class="btn" id="bImport">Import</button>
+    <button class="btn" id="bHelp">?</button>
+    <button class="btn danger" id="bReset">Reset</button>
+  </div>
+  <div class="save" id="saveState"></div>
+</header>
+
+<main>
+  <aside class="side">
+    <section class="card">
+      <h2>► Log a transition</h2>
+      <label for="qAt">I went in at…</label>
+      <div class="cwrap">
+        <input id="qAt" placeholder="type an entrance…" autocomplete="off">
+        <div class="pop" id="qAtPop" hidden></div>
+      </div>
+      <label for="qTo">…and found</label>
+      <div class="cwrap">
+        <input id="qTo" placeholder="a destination, or ⇆ other side…" autocomplete="off">
+        <div class="pop" id="qToPop" hidden></div>
+      </div>
+      <button class="btn gold wide" id="bLog">Log it ▸</button>
+    </section>
+
+    <section class="card">
+      <h2>► Emulator link</h2>
+      <label for="tUrl">usb2snes / SNI websocket</label>
+      <input id="tUrl" list="tUrlList" value="ws://localhost:23074" autocomplete="off" spellcheck="false">
+      <datalist id="tUrlList">
+        <option value="ws://localhost:23074">SNI</option>
+        <option value="ws://localhost:8080">QUsb2Snes</option>
+      </datalist>
+      <div id="tDevRow" hidden>
+        <label for="tDev">Device</label>
+        <select id="tDev"></select>
+      </div>
+      <div class="trkstat"><span class="lamp" id="tLamp"></span><span id="tStatus">offline</span></div>
+      <div class="trklive" id="tLive"></div>
+      <div class="trklive tevt" id="tEvent"></div>
+      <label class="ck"><input type="checkbox" id="ckAuto" checked> Auto-map as I play</label>
+      <label class="ck"><input type="checkbox" id="ckFog" checked> Shade unexplored overworld</label>
+      <button class="btn gold wide" id="tConnect">Connect</button>
+    </section>
+
+    <section class="card">
+      <h2>► Find &amp; filter</h2>
+      <input id="search" placeholder="search the map…" autocomplete="off">
+      <div class="chips" id="chips">
+        <button class="chip on" data-f="all">All</button>
+        <button class="chip" data-f="unknown">Unknown</button>
+        <button class="chip" data-f="mapped">Mapped</button>
+        <button class="chip" data-f="dungeon">Dungeons</button>
+        <button class="chip" data-f="link">Connectors</button>
+        <button class="chip" data-f="dead">Dead ends</button>
+      </div>
+      <label class="ck"><input type="checkbox" id="ckNames"> Show names</label>
+      <label class="ck"><input type="checkbox" id="ckOrder"> Show visit order</label>
+      <button class="btn wide" id="bAddPin">+ Custom pin</button>
+    </section>
+
+    <section class="card legend">
+      <h2>► Legend</h2>
+      <div><i class="sw unknown"></i> Unknown</div>
+      <div><i class="sw done"></i> Mapped</div>
+      <div><i class="sw dungeon"></i> Dungeon found</div>
+      <div><i class="sw link"></i> Connector (linked)</div>
+      <div><i class="sw dead"></i> Dead end</div>
+      <div><i class="sw drop"></i> Drop / hole</div>
+    </section>
+
+    <section class="card" id="detail" hidden>
+      <h2 id="dName"></h2>
+      <div class="sub" id="dMeta"></div>
+      <label for="dDest">Leads to</label>
+      <div class="cwrap">
+        <input id="dDest" placeholder="what's inside?" autocomplete="off">
+        <div class="pop" id="dDestPop" hidden></div>
+      </div>
+      <label for="dLink">Connects through to (other side)</label>
+      <div class="cwrap">
+        <input id="dLink" placeholder="pick another entrance…" autocomplete="off">
+        <div class="pop" id="dLinkPop" hidden></div>
+      </div>
+      <label class="ck"><input type="checkbox" id="dDead"> Dead end / useless</label>
+      <label for="dNote">Notes</label>
+      <textarea id="dNote" rows="2" placeholder="needs hammer, has chest, etc."></textarea>
+      <div class="row">
+        <button class="btn" id="dCenter">Center</button>
+        <button class="btn" id="dClear">Clear</button>
+        <button class="btn danger" id="dDelete" hidden>Delete pin</button>
+      </div>
+    </section>
+  </aside>
+
+  <div class="maparea">
+    <svg id="map" viewBox="0 0 1720 815" preserveAspectRatio="xMidYMid meet" aria-label="Light and Dark World entrance maps">
+      <g id="vp"></g>
+    </svg>
+    <div class="zoomui">
+      <button class="btn" id="zIn">+</button>
+      <button class="btn" id="zOut">−</button>
+      <button class="btn" id="zL">LW</button>
+      <button class="btn" id="zD">DW</button>
+      <button class="btn" id="zU">UW</button>
+      <button class="btn" id="zA">All</button>
+      <button class="btn" id="zArt" title="Toggle real game maps / schematic">ART</button>
+    </div>
+    <div id="tip" hidden></div>
+  </div>
+
+  <aside class="logside">
+    <h2>► Transition log <span id="logN"></span></h2>
+    <div id="logList"></div>
+  </aside>
+</main>
+
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+<div id="modal" hidden><div class="mbox" id="mbox"></div></div>
+<div id="toast" hidden></div>
+
+<script>
+'use strict';
+/* ============================================================
+   ALTTP Entrance Mapper — data
+   ============================================================ */
+const KEY = 'alttp_er_mapper_v1';
+const PANEL_X = { L: 30, D: 930 };
+const MAPT = 70, MAPW = 760, MAPH = 700;
+
+const DUNGEON_SET = new Set([
+  'Hyrule Castle','Hyrule Sewers','Eastern Palace','Desert Palace','Tower of Hera',
+  "Agahnim's Tower",'Palace of Darkness','Swamp Palace','Skull Woods (dungeon)',
+  "Thieves' Town (dungeon)",'Ice Palace','Misery Mire (dungeon)','Turtle Rock (dungeon)',
+  "Ganon's Tower (dungeon)"
+]);
+const CONNECTOR_SET = new Set([
+  'Old Man Cave','Old Man House','Death Mountain Return Cave','Spectacle Rock Cave',
+  'Fairy Ascension Cave','Paradox Cave','Spiral Cave','Bumper Cave','Hookshot Cave',
+  'Superbunny Cave','Elder House','Two Brothers House','Kakariko Well','Bat Cave',
+  'North Fairy Cave','Lost Woods Hideout','Lumberjack Tree','Castle Secret Passage (Uncle)'
+]);
+
+const DESTS = [
+  { g:'Dungeons', items:[
+    'Hyrule Castle','Hyrule Sewers','Eastern Palace','Desert Palace','Tower of Hera',
+    "Agahnim's Tower",'Palace of Darkness','Swamp Palace','Skull Woods (dungeon)',
+    "Thieves' Town (dungeon)",'Ice Palace','Misery Mire (dungeon)','Turtle Rock (dungeon)',
+    "Ganon's Tower (dungeon)" ]},
+  { g:'Connector caves', items:[
+    'Old Man Cave','Old Man House','Death Mountain Return Cave','Spectacle Rock Cave',
+    'Fairy Ascension Cave','Paradox Cave','Spiral Cave','Bumper Cave','Hookshot Cave',
+    'Superbunny Cave','Elder House','Two Brothers House','Kakariko Well','Bat Cave',
+    'North Fairy Cave','Lost Woods Hideout','Lumberjack Tree','Castle Secret Passage (Uncle)' ]},
+  { g:'Item caves & houses', items:[
+    'Mimic Cave','Spike Cave','Checkerboard Cave',"Aginah's Cave",'Cave 45','Ice Rod Cave',
+    'Mini Moldorm Cave','Bonk Rock Cave','Graveyard Cave',"King's Tomb",'Chicken House',
+    'Sick Kid',"Blind's House",'Bush Covered House','Library',"Sahasrahla's Hut",'Tavern','Blacksmiths','Brewery',
+    'C-Shaped House','Hammer Peg Cave','Hype Cave','Mire Shed','Bomb Hut','20 Rupee Cave','50 Rupee Cave',
+    'Waterfall of Wishing','Good Bee Cave','Snitch House' ]},
+  { g:'Shops & upgrades', items:[
+    'Kakariko Shop','Potion Shop','Lake Hylia Shop','Dark Lake Hylia Shop',
+    'Village of Outcasts Shop','Dark Death Mountain Shop','Dark Potion Shop',
+    'Red Shield Shop','Big Bomb Shop','Dark Lumberjack Shop','Capacity Upgrade Fairy' ]},
+  { g:'Games', items:[ 'Gamble Game','Archery Game','Chest Game','Lost Woods Gamble' ]},
+  { g:'Fairies & hints', items:[
+    'Healing Fairy','Bonk Fairy','Desert Fairy','Light Hype Fairy','Lake Hylia Fairy',
+    'Long Fairy Cave','Hookshot Fairy','Dark Death Mountain Fairy','Mire Fairy',
+    'Pyramid Fairy','Dark Lake Hylia Fairy','Dark Lake Hylia Ledge Fairy','Fortune Teller',
+    'Dark Sanctuary Hint','Palace of Darkness Hint','East Dark World Hint','Mire Hint',
+    'Dark Lake Hylia Ledge Hint','Storyteller' ]},
+  { g:'Misc', items:[
+    "Link's House",'Dam','Sanctuary','Old Man (rescue)','Lumberjack House',
+    'Nothing (dead end)' ]}
+];
+
+/* ---------- entrance dataset ---------- */
+const RAW = [];
+function reg(region, world, rows){
+  for (const r of rows) RAW.push({ n:r[0], x:r[1], y:r[2], k:r[3]||'door', w:world, r:region });
+}
+
+/* ===== LIGHT WORLD ===== */
+reg('Lost Woods','L',[
+  ['Lost Woods Hideout Drop',10,8,'drop'],
+  ['Lumberjack Tree Drop',30,5,'drop'],
+  ['Lumberjack House',33,10],
+  ['Lost Woods Gamble',18,1],
+  ['Lumberjack Tree Cave',33,3],
+]);
+reg('Northwest','L',[ ['Fortune Teller (Light)',26,36] ]);
+reg('West Death Mtn','L',[
+  ['Old Man Cave (West)',33,22],
+  ['Old Man Cave (East)',38,19],
+  ['Death Mtn Return Cave (West)',36,16],
+  ['Death Mtn Return Cave (East)',40,14],
+  ['Old Man House (Bottom)',45,15],
+  ['Old Man House (Top)',48,13],
+  ['Spectacle Rock Cave (Bottom)',41,12],
+  ['Spectacle Rock Cave (Peak)',43,10],
+  ['Spectacle Rock Cave',45,8],
+  ['Tower of Hera',56,3],
+]);
+reg('East Death Mtn','L',[
+  ['Spiral Cave',61,7],
+  ['Spiral Cave (Bottom)',61,11],
+  ['Fairy Ascension Cave (Top)',64,8],
+  ['Fairy Ascension Cave (Bottom)',64,11],
+  ['Hookshot Fairy',67,11],
+  ['Paradox Cave (Top)',70,5],
+  ['Paradox Cave (Middle)',69,9],
+  ['Paradox Cave (Bottom)',69,12],
+  ['Mimic Cave',87,9],
+]);
+reg('Northeast','L',[
+  ['Waterfall of Wishing',89,15],
+  ['Potion Shop',80,32],
+]);
+reg('Graveyard','L',[
+  ['Sanctuary',46,27],
+  ['Sanctuary Grave Drop',50,26,'drop'],
+  ['Bonk Rock Cave',49,22],
+  ['Graveyard Cave',54,25],
+  ["King's Tomb",58,27],
+  ['North Fairy Cave Drop',64,23,'drop'],
+  ['North Fairy Cave',66,26],
+]);
+reg('Hyrule Castle','L',[
+  ['Hyrule Castle (West)',46,43],
+  ['Hyrule Castle (South)',50,46],
+  ['Hyrule Castle (East)',54,43],
+  ["Agahnim's Tower",50,40],
+  ['Castle Secret Entrance Drop',58,41,'drop'],
+  ['Castle Secret Entrance (Stairs)',60,44],
+]);
+reg('Kakariko','L',[
+  ['Kakariko Well Drop',10,41,'drop'],
+  ['Kakariko Well Cave',11,43],
+  ["Blind's House",13,47],
+  ['Elder House (West)',17,44],
+  ['Elder House (East)',19,44],
+  ['Snitch Lady (West)',9,47],
+  ['Snitch Lady (East)',21,47],
+  ['Chicken House',11,52],
+  ['Sick Kid',16,52],
+  ['Kakariko Shop',14,56],
+  ['Tavern (North)',18,55],
+  ['Tavern (Front)',18,58],
+  ['Bush Covered House',20,53],
+  ['Blacksmiths',26,55],
+  ['Bat Cave Drop',29,57,'drop'],
+  ['Bat Cave',29,60],
+  ['Library',14,64],
+  ['Bomb Hut',3,59],
+  ['Two Brothers House (West)',17,70],
+  ['Two Brothers House (East)',20,70],
+  ['Gamble Game',24,74],
+]);
+reg('Desert','L',[
+  ['Desert Palace (West)',4,79],
+  ['Desert Palace (South)',8,81],
+  ['Desert Palace (East)',12,79],
+  ['Desert Palace (North)',8,75],
+  ['Checkerboard Cave',14,76],
+  ["Aginah's Cave",12,82],
+  ['Desert Fairy',19,89],
+  ['50 Rupee Cave',23,91],
+]);
+reg('South','L',[
+  ['Cave 45',35,82],
+  ['Dam',47,93],
+  ['Bonk Fairy (Light)',49,72],
+]);
+reg('Central','L',[
+  ["Link's House",55,67],
+]);
+reg('Lake Hylia','L',[
+  ['Light Hype Fairy',59,77],
+  ['Lake Hylia Shop',61,81],
+  ['Capacity Upgrade Fairy',67,84],
+  ['Mini Moldorm Cave',65,93],
+  ['Ice Rod Cave',74,87],
+  ['20 Rupee Cave',76,90],
+  ['Good Bee Cave',78,85],
+  ['Long Fairy Cave',82,82],
+  ['Lake Hylia Fairy',72,79],
+]);
+reg('East','L',[
+  ["Sahasrahla's Hut",81,45],
+  ['Eastern Palace',91,39],
+]);
+
+/* ===== DARK WORLD ===== */
+reg('Skull Woods','D',[
+  ['Skull Woods Front',11,13],
+  ['Skull Woods Hole (Pinball)',14,12,'drop'],
+  ['Skull Woods Hole (Left)',7,11,'drop'],
+  ['Skull Woods Hole (Pot Circle)',13,8,'drop'],
+  ['Skull Woods Hole (Back)',6,7,'drop'],
+  ['Skull Woods Second Section (West)',6,12],
+  ['Skull Woods Second Section (East)',14,14],
+  ['Skull Woods Final Section',4,5],
+]);
+reg('Northwest','D',[
+  ['Dark Lumberjack Shop',33,10],
+  ['Fortune Teller (Dark)',26,36],
+]);
+reg('West Dark Death Mtn','D',[
+  ['Bumper Cave (Bottom)',33,22],
+  ['Bumper Cave (Top)',32,17],
+  ['Dark Death Mtn Fairy',37,16],
+  ['Spike Cave',43,10],
+  ["Ganon's Tower",56,3],
+]);
+reg('East Dark Death Mtn','D',[
+  ['Hookshot Cave',66,8],
+  ['Hookshot Cave Back',67,5],
+  ['Superbunny Cave (Top)',69,7],
+  ['Superbunny Cave (Bottom)',69,11],
+  ['Dark Death Mtn Shop',72,12],
+  ['Turtle Rock',93,6],
+  ['Dark DM Ledge (West)',84,8],
+  ['Dark DM Ledge (East)',88,8],
+  ['Turtle Rock Isolated Ledge',86,11],
+]);
+reg('North','D',[
+  ['Dark Sanctuary Hint',46,27],
+  ['Red Shield Shop',39,33],
+]);
+reg('Northeast','D',[ ['Dark Potion Shop',80,32] ]);
+reg('Pyramid','D',[
+  ['Pyramid Hole',51,38,'drop'],
+  ['Pyramid Entrance',51,45],
+  ['Pyramid Fairy',45,45],
+]);
+reg('Village of Outcasts','D',[
+  ["Thieves' Town",14,49],
+  ['Chest Game',9,47],
+  ['C-Shaped House',19,44],
+  ['Brewery',12,53],
+  ['Village of Outcasts Shop',14,56],
+  ['Hammer Peg Cave',29,60],
+  ['Archery Game',22,73],
+]);
+reg('East','D',[
+  ['Palace of Darkness',91,39],
+  ['Palace of Darkness Hint',81,45],
+  ['East Dark World Hint',82,82],
+]);
+reg('Central','D',[
+  ['Big Bomb Shop',55,67],
+  ['Bonk Fairy (Dark)',49,72],
+]);
+reg('Lake Hylia','D',[
+  ['Hype Cave',59,77],
+  ['Dark Lake Hylia Shop',63,78],
+  ['Ice Palace',66,86],
+  ['Dark Lake Hylia Fairy',72,79],
+  ['Dark Lake Hylia Ledge Fairy',74,87],
+  ['Dark Lake Hylia Ledge Hint',78,85],
+  ['Dark Lake Hylia Ledge Spike Cave',76,90],
+]);
+reg('Swamp','D',[ ['Swamp Palace',47,93] ]);
+reg('Misery Mire','D',[
+  ['Misery Mire',8,81],
+  ['Mire Shed',4,79],
+  ['Mire Hint',12,79],
+  ['Mire Fairy',14,76],
+]);
+
+function slug(w, n){
+  return (w==='L'?'lw_':'dw_') + n.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+const ENTR = RAW.map(e => Object.assign({ id: slug(e.w, e.n) }, e));
+
+/* ---------- real overworld coords + vanilla interiors (from randomizer data) ---------- */
+const REAL = {"lw_lumberjack_house":[33.4,5.27,2,287],"lw_fortune_teller_light":[18.55,31.45,17,290],"lw_old_man_cave_west":[35.35,16.99,10,240],"lw_old_man_cave_east":[40.43,18.16,3,241],"lw_death_mtn_return_cave_west":[35.74,14.62,10,230],"lw_death_mtn_return_cave_east":[39.26,13.09,3,231],"lw_old_man_house_bottom":[44.73,22.83,3,228],"lw_old_man_house_top":[53.32,15.43,3,229],"lw_spectacle_rock_cave_bottom":[45.51,13.06,3,249],"lw_spectacle_rock_cave_peak":[48.63,9.55,3,234],"lw_spectacle_rock_cave":[48.63,13.84,3,250],"lw_tower_of_hera":[55.86,2.54,3,119],"lw_spiral_cave":[79.49,8.4,5,238],"lw_spiral_cave_bottom":[79.88,12.28,5,254],"lw_fairy_ascension_cave_top":[81.84,10.72,5,237],"lw_fairy_ascension_cave_bottom":[81.84,13.09,5,253],"lw_hookshot_fairy":[84.18,13.82,5,268],"lw_paradox_cave_top":[85.74,5.64,5,223],"lw_paradox_cave_middle":[86.13,20.9,5,239],"lw_paradox_cave_bottom":[85.35,13.84,5,255],"lw_mimic_cave":[84.18,8.35,5,268],"lw_waterfall_of_wishing":[89.84,12.67,15,276],"lw_potion_shop":[79.88,32.62,22,265],"lw_sanctuary":[45.9,25.49,19,18],"lw_bonk_rock_cave":[38.87,29.08,19,292],"lw_graveyard_cave":[56.84,26.71,20,283],"lw_king_s_tomb":[59.96,29.05,20,275],"lw_north_fairy_cave":[66.6,26.76,21,8],"lw_hyrule_castle_west":[44.73,37.6,27,96],"lw_hyrule_castle_south":[49.8,42.48,27,97],"lw_hyrule_castle_east":[54.88,37.6,27,98],"lw_agahnim_s_tower":[49.8,38.77,27,224],"lw_castle_secret_entrance_stairs":[54.88,42.38,27,85],"lw_kakariko_well_cave":[4.49,41.97,24,47],"lw_blind_s_house":[12.7,41.19,24,281],"lw_elder_house_west":[15.04,41.21,24,242],"lw_elder_house_east":[16.6,41.21,24,243],"lw_snitch_lady_west":[4.88,45.9,24,257],"lw_snitch_lady_east":[20.51,47.46,24,257],"lw_chicken_house":[9.57,53.32,24,264],"lw_sick_kid":[15.43,52.91,24,258],"lw_kakariko_shop":[10.74,57.59,24,287],"lw_tavern_north":[15.82,56.08,24,259],"lw_bush_covered_house":[20.12,52.54,24,259],"lw_tavern_front":[15.82,58.76,24,259],"lw_blacksmiths":[30.27,52.54,34,289],"lw_bat_cave":[31.45,54.88,34,227],"lw_library":[15.43,65.01,41,263],"lw_two_brothers_house_west":[10.74,70.9,40,244],"lw_two_brothers_house_east":[13.87,70.9,41,245],"lw_gamble_game":[21.29,69.34,41,280],"lw_desert_palace_west":[3.32,78.71,48,131],"lw_desert_palace_south":[7.23,79.1,48,132],"lw_desert_palace_east":[11.13,78.71,48,133],"lw_desert_palace_north":[7.23,75.98,48,99],"lw_checkerboard_cave":[17.38,77.51,48,294],"lw_aginah_s_cave":[19.73,81.84,48,266],"lw_desert_fairy":[27.54,88.43,58,277],"lw_50_rupee_cave":[31.05,95.48,58,292],"lw_cave_45":[26.37,81.79,50,283],"lw_dam":[46.68,92.77,59,267],"lw_bonk_fairy_light":[47.07,65.01,43,294],"lw_link_s_house":[54.49,68.16,44,260],"lw_light_hype_fairy":[59.57,77.15,52,277],"lw_capacity_upgrade_fairy":[79.1,84.57,53,277],"lw_mini_moldorm_cave":[65.04,93.16,53,291],"lw_ice_rod_cave":[89.26,76.34,55,288],"lw_20_rupee_cave":[90.04,78.27,55,293],"lw_good_bee_cave":[91.21,76.32,55,288],"lw_long_fairy_cave":[97.85,69.34,47,286],"lw_lake_hylia_fairy":[82.23,63.84,46,277],"lw_sahasrahla_s_hut":[80.86,44.7,30,261],"lw_eastern_palace":[95.7,38.09,30,201],"dw_skull_woods_front":[18.16,14.26,64,88],"dw_skull_woods_second_section_west":[5.66,12.3,64,86],"dw_skull_woods_second_section_east":[14.26,13.87,64,87],"dw_skull_woods_final_section":[3.71,4.49,64,89],"dw_fortune_teller_dark":[18.55,31.42,81,290],"dw_bumper_cave_bottom":[35.35,16.97,74,251],"dw_bumper_cave_top":[35.74,14.65,74,235],"dw_dark_death_mtn_fairy":[40.43,18.16,67,277],"dw_spike_cave":[57.23,13.82,67,279],"dw_ganon_s_tower":[56.05,0.98,67,12],"dw_hookshot_cave":[83.01,6.42,69,60],"dw_hookshot_cave_back":[79.88,1.37,69,44],"dw_superbunny_cave_top":[85.74,5.64,69,232],"dw_superbunny_cave_bottom":[84.18,13.87,69,248],"dw_turtle_rock":[93.95,7.23,71,214],"dw_dark_dm_ledge_west":[79.49,8.37,69,35],"dw_dark_dm_ledge_east":[84.18,8.37,69,36],"dw_turtle_rock_isolated_ledge":[81.84,10.74,69,213],"dw_dark_sanctuary_hint":[45.9,26.71,83,274],"dw_red_shield_shop":[33.01,45.12,90,272],"dw_pyramid_entrance":[43.16,47.85,91,16],"dw_pyramid_fairy":[46.68,47.83,91,278],"dw_thieves_town":[12.3,47.85,88,219],"dw_chest_game":[4.88,45.9,88,262],"dw_c_shaped_house":[20.51,47.44,88,284],"dw_brewery":[10.74,57.62,88,262],"dw_village_of_outcasts_shop":[20.12,52.54,88,271],"dw_archery_game":[21.29,69.34,105,273],"dw_palace_of_darkness":[95.7,38.48,94,74],"dw_palace_of_darkness_hint":[84.77,49.41,94,282],"dw_east_dark_world_hint":[97.85,69.34,111,270],"dw_big_bomb_shop":[54.49,68.14,108,284],"dw_bonk_fairy_dark":[47.07,64.99,107,294],"dw_hype_cave":[59.57,77.15,116,286],"dw_dark_lake_hylia_shop":[64.65,79.49,117,271],"dw_ice_palace":[79.49,85.74,117,14],"dw_dark_lake_hylia_fairy":[82.23,63.82,110,277],"dw_dark_lake_hylia_ledge_fairy":[89.26,76.34,119,277],"dw_dark_lake_hylia_ledge_hint":[91.21,76.32,119,270],"dw_dark_lake_hylia_ledge_spike_cave":[90.04,78.27,119,293],"dw_swamp_palace":[46.68,92.77,123,40],"dw_misery_mire":[7.23,79.86,112,152],"dw_mire_shed":[3.71,79.44,112,269],"lw_lake_hylia_shop":[72.46,75.93,53,274],"lw_bomb_hut":[2.54,58.76,24,263],"lw_lost_woods_gamble":[18.36,0.2,0,256],"lw_lumberjack_tree_cave":[33.01,2.51,2,226],"dw_dark_lumberjack_shop":[33.4,4.86,66,271],"dw_dark_death_mtn_shop":[85.4,13.82,69,274],"dw_hammer_peg_cave":[31.45,60.3,98,295],"dw_mire_hint":[19.73,81.79,112,276],"dw_mire_fairy":[10.74,79.47,112,277],"dw_dark_potion_shop":[80.27,33.01,86,271]};
+const ROOMS = {4:"Turtle Rock (dungeon)",6:"Swamp Palace",7:"Tower of Hera",8:"North Fairy Cave",9:"Palace of Darkness",10:"Palace of Darkness",12:"Ganon's Tower (dungeon)",14:"Ice Palace",16:"Pyramid (under)",17:"Hyrule Sewers",18:"Sanctuary",19:"Turtle Rock (dungeon)",20:"Turtle Rock (dungeon)",22:"Swamp Palace",25:"Palace of Darkness",26:"Palace of Darkness",28:"Ganon's Tower (dungeon)",31:"Ice Palace",33:"Hyrule Sewers",35:"Turtle Rock (dungeon)",36:"Turtle Rock (dungeon)",39:"Tower of Hera",40:"Swamp Palace",41:"Skull Woods (dungeon)",42:"Palace of Darkness",43:"Palace of Darkness",44:"Hookshot Cave",46:"Ice Palace",47:"Kakariko Well",50:"Hyrule Sewers",51:"Desert Palace",52:"Swamp Palace",53:"Swamp Palace",54:"Swamp Palace",55:"Swamp Palace",56:"Swamp Palace",57:"Skull Woods (dungeon)",58:"Palace of Darkness",60:"Hookshot Cave",61:"Ganon's Tower (dungeon)",62:"Ice Palace",63:"Ice Palace",67:"Desert Palace",68:"Thieves' Town (dungeon)",69:"Thieves' Town (dungeon)",70:"Swamp Palace",74:"Palace of Darkness",77:"Ganon's Tower (dungeon)",83:"Desert Palace",85:"Castle Secret Passage (Uncle)",86:"Skull Woods (dungeon)",87:"Skull Woods (dungeon)",88:"Skull Woods (dungeon)",89:"Skull Woods (dungeon)",90:"Palace of Darkness",95:"Ice Palace",96:"Hyrule Castle",97:"Hyrule Castle",98:"Hyrule Castle",99:"Desert Palace",101:"Thieves' Town (dungeon)",102:"Swamp Palace",103:"Skull Woods (dungeon)",104:"Skull Woods (dungeon)",106:"Palace of Darkness",113:"Hyrule Castle",114:"Hyrule Castle",115:"Desert Palace",116:"Desert Palace",117:"Desert Palace",118:"Swamp Palace",119:"Tower of Hera",123:"Ganon's Tower (dungeon)",124:"Ganon's Tower (dungeon)",125:"Ganon's Tower (dungeon)",126:"Ice Palace",128:"Hyrule Castle",131:"Desert Palace",132:"Desert Palace",133:"Desert Palace",135:"Tower of Hera",139:"Ganon's Tower (dungeon)",140:"Ganon's Tower (dungeon)",141:"Ganon's Tower (dungeon)",144:"Misery Mire (dungeon)",152:"Misery Mire (dungeon)",153:"Eastern Palace",155:"Ganon's Tower (dungeon)",157:"Ganon's Tower (dungeon)",158:"Ice Palace",159:"Ice Palace",161:"Misery Mire (dungeon)",162:"Misery Mire (dungeon)",164:"Turtle Rock (dungeon)",168:"Eastern Palace",169:"Eastern Palace",170:"Eastern Palace",171:"Thieves' Town (dungeon)",172:"Thieves' Town (dungeon)",174:"Ice Palace",176:"Agahnim's Tower",179:"Misery Mire (dungeon)",182:"Turtle Rock (dungeon)",183:"Turtle Rock (dungeon)",184:"Eastern Palace",185:"Eastern Palace",186:"Eastern Palace",188:"Thieves' Town (dungeon)",192:"Agahnim's Tower",193:"Misery Mire (dungeon)",194:"Misery Mire (dungeon)",195:"Misery Mire (dungeon)",200:"Eastern Palace",201:"Eastern Palace",203:"Thieves' Town (dungeon)",208:"Agahnim's Tower",209:"Misery Mire (dungeon)",213:"Turtle Rock (dungeon)",214:"Turtle Rock (dungeon)",219:"Thieves' Town (dungeon)",220:"Thieves' Town (dungeon)",222:"Ice Palace",223:"Paradox Cave",224:"Agahnim's Tower",225:"Lost Woods Hideout Stump",226:"Lumberjack Tree",227:"Bat Cave",228:"Old Man House",229:"Old Man House",230:"Death Mountain Return Cave",231:"Death Mountain Return Cave",232:"Superbunny Cave",234:"Spectacle Rock Cave",235:"Bumper Cave",237:"Fairy Ascension Cave",238:"Spiral Cave",239:"Paradox Cave",240:"Old Man Cave",241:"Old Man Cave",242:"Elder House",243:"Elder House",244:"Two Brothers House",245:"Two Brothers House",248:"Superbunny Cave",249:"Spectacle Rock Cave",250:"Spectacle Rock Cave",251:"Bumper Cave",253:"Fairy Ascension Cave",254:"Spiral Cave",255:"Paradox Cave",256:"Lost Woods Gamble",257:"Snitch Lady",258:"Sick Kid",259:"Bush Covered House / Tavern",260:"Link's House",261:"Sahasrahla's Hut",262:"Brewery / Chest Game",263:"Bomb Hut / Library",264:"Chicken House",265:"Potion Shop",266:"Aginah's Cave",267:"Dam",268:"Hookshot Fairy / Mimic Cave",269:"Mire Shed",270:"Dark Lake Hylia Ledge Hint / East Dark World Hint",271:"Dark Lake Hylia Shop / Dark Lumberjack Shop / Dark Potion Shop / Village of Outcasts Shop",272:"Red Shield Shop",273:"Archery Game",274:"Dark Death Mountain Shop / Dark Sanctuary Hint / Lake Hylia Shop",275:"King's Tomb",276:"Mire Hint / Waterfall of Wishing",277:"Capacity Upgrade Fairy / Dark Death Mountain Fairy / Dark Lake Hylia Fairy / Dark Lake Hylia Ledge Fairy / Desert Fairy / Lake Hylia Fairy / Light Hype Fairy / Mire Fairy",278:"Pyramid Fairy",279:"Spike Cave",280:"Gamble Game",281:"Blind's House",282:"Palace of Darkness Hint",283:"Cave 45 / Graveyard Cave",284:"Big Bomb Shop / C-Shaped House",285:"Blind's House",286:"Hype Cave / Long Fairy Cave",287:"Kakariko Shop / Lumberjack House",288:"Good Bee Cave / Ice Rod Cave",289:"Blacksmiths",290:"Fortune Teller / Lake Hylia Fortune Teller",291:"Mini Moldorm Cave",292:"50 Rupee Cave / Bonk Rock Cave",293:"20 Rupee Cave / Dark Lake Hylia Ledge Spike Cave",294:"Bonk Fairy / Checkerboard Cave",295:"Hammer Peg Cave"};
+const DGN_NAMES = ["Hyrule Sewers", "Hyrule Castle", "Eastern Palace", "Desert Palace", "Agahnim's Tower", "Swamp Palace", "Palace of Darkness", "Misery Mire (dungeon)", "Skull Woods (dungeon)", "Ice Palace", "Tower of Hera", "Thieves' Town (dungeon)", "Turtle Rock (dungeon)", "Ganon's Tower (dungeon)"];
+const HOLE_AREA = {"lw_lost_woods_hideout_drop":0,"lw_lumberjack_tree_drop":2,"lw_sanctuary_grave_drop":19,"lw_north_fairy_cave_drop":21,"lw_castle_secret_entrance_drop":27,"lw_kakariko_well_drop":24,"lw_bat_cave_drop":34,"dw_pyramid_hole":91,"dw_skull_woods_hole_pinball":64,"dw_skull_woods_hole_left":64,"dw_skull_woods_hole_pot_circle":64,"dw_skull_woods_hole_back":64};
+for (const e of ENTR){
+  const r = REAL[e.id];
+  if (r){ e.x = r[0]; e.y = r[1]; e.area = r[2]; }
+  else if (HOLE_AREA[e.id] != null) e.area = HOLE_AREA[e.id];
+}
+
+/* ---------- tiny helpers ---------- */
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function S(tag, attrs, parent){
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  if (attrs) for (const k in attrs) el.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(el);
+  return el;
+}
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+function px(e){ return PANEL_X[e.w] + e.x/100*MAPW; }
+function py(e){ return MAPT + e.y/100*MAPH; }
+function timeStr(t){ const d = new Date(t); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+
+/* ============================================================
+   State
+   ============================================================ */
+let state = { assignments:{}, log:[], customs:[], seq:0, art:true, roomNames:{},
+  trk:{ url:'', auto:true, fog:true }, atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
+let selId = null;
+let filter = 'all';
+let adding = false;
+let undoStack = [];
+let byIdMap = {};
+
+function ENTRANCES(){ return ENTR.concat(state.customs); }
+function rebuildIndex(){
+  byIdMap = {};
+  for (const e of ENTRANCES()) byIdMap[e.id] = e;
+}
+function byId(id){ return byIdMap[id]; }
+function nameOf(id){ const e = byId(id); return e ? e.n : id; }
+function asg(id){ return state.assignments[id]; }
+function ensureAsg(id){
+  if (!state.assignments[id]) state.assignments[id] = { dest:'', link:'', deadEnd:false, note:'' };
+  return state.assignments[id];
+}
+function statusOf(id){
+  const a = asg(id);
+  if (!a) return 'unknown';
+  if (a.deadEnd) return 'dead';
+  if (a.dest && DUNGEON_SET.has(a.dest)) return 'dungeon';
+  if (a.link) return 'link';
+  if (a.dest) return 'done';
+  return 'unknown';
+}
+function pushUndo(){
+  undoStack.push(JSON.stringify(state));
+  if (undoStack.length > 60) undoStack.shift();
+}
+function undo(){
+  if (!undoStack.length){ toast('Nothing to undo'); return; }
+  state = JSON.parse(undoStack.pop());
+  selId = null; hideDetail();
+  rebuild(); save();
+  toast('Undone');
+}
+
+/* ============================================================
+   Terrain (original schematic art — no game assets)
+   ============================================================ */
+const TER = {
+  mnt:  [[26,23],[31,9],[38,16],[45,3],[54,13],[62,2],[70,12],[78,5],[86,13],[94,7],[100,13],[100,24],[62,26],[40,26]],
+  wood: [[0,0],[24,0],[22,9],[16,16],[7,18],[0,15]],
+  des:  [[0,68],[16,69],[26,77],[25,94],[9,98],[0,96]],
+  vil:  [[5,39],[27,40],[30,57],[25,76],[7,77],[3,58]],
+  lake: [68,84,12,9],
+  river:[[89,13],[83,26],[78,34],[73,44],[74,55],[71,66],[70,78]],
+};
+const LBL = {
+  L: [['LOST WOODS',12,14],['DEATH MOUNTAIN',63,21],['KAKARIKO',16,49],['DESERT',12,87],['LAKE HYLIA',68,86],['HYRULE CASTLE',50,53]],
+  D: [['SKULL WOODS',12,14],['DARK DEATH MTN',63,21],['OUTCASTS',16,49],['MISERY MIRE',12,87],['ICE LAKE',68,86],['PYRAMID',51,53]],
+};
+function pts(arr){ return arr.map(p => (p[0]*MAPW/100).toFixed(1)+','+(p[1]*MAPH/100).toFixed(1)).join(' '); }
+
+function buildTerrain(){
+  const vp = $('vp');
+  for (const w of ['L','D']){
+    const g = S('g', { class: w==='L' ? 'tL' : 'tD', transform:`translate(${PANEL_X[w]} ${MAPT})` }, vp);
+    S('rect', { class:'tbase', x:0, y:0, width:MAPW, height:MAPH }, g);
+    S('polygon', { class:'twood', points: pts(TER.wood) }, g);
+    S('polygon', { class:'tmnt',  points: pts(TER.mnt)  }, g);
+    S('polygon', { class:'tdes',  points: pts(TER.des)  }, g);
+    S('polygon', { class:'tvil',  points: pts(TER.vil)  }, g);
+    S('ellipse', { class:'tlake', cx:TER.lake[0]*MAPW/100, cy:TER.lake[1]*MAPH/100, rx:TER.lake[2]*MAPW/100, ry:TER.lake[3]*MAPH/100 }, g);
+    const rv = TER.river.map((p,i) => (i?'L ':'M ') + (p[0]*MAPW/100).toFixed(1)+' '+(p[1]*MAPH/100).toFixed(1)).join(' ');
+    S('path', { class:'triv', d: rv }, g);
+
+    // landmark glyph
+    const cx = (w==='L'?50:51)*MAPW/100, cy = 45*MAPH/100;
+    if (w === 'L'){
+      const c = S('g', null, g);
+      S('rect', { x:cx-26, y:cy-14, width:52, height:26, fill:'#b8b2c8', stroke:'#0b0a12', 'stroke-width':3 }, c);
+      S('rect', { x:cx-36, y:cy-24, width:13, height:36, fill:'#cdc7da', stroke:'#0b0a12', 'stroke-width':3 }, c);
+      S('rect', { x:cx+23, y:cy-24, width:13, height:36, fill:'#cdc7da', stroke:'#0b0a12', 'stroke-width':3 }, c);
+      S('rect', { x:cx-6,  y:cy-2,  width:12, height:14, fill:'#0b0a12' }, c);
+    } else {
+      S('polygon', { points:`${cx},${cy-32} ${cx+36},${cy+12} ${cx-36},${cy+12}`, fill:'#8a79a8', stroke:'#0b0a12', 'stroke-width':3 }, g);
+      S('rect', { x:cx-6, y:cy-2, width:12, height:14, fill:'#0b0a12' }, g);
+    }
+    for (const L of LBL[w]) S('text', { class:'tlbl', x:L[1]*MAPW/100, y:L[2]*MAPH/100 }, g).textContent = L[0];
+    const im = S('image', { class:'mapimg', x:0, y:0, width:MAPW, height:MAPH, preserveAspectRatio:'none' }, g);
+    const iu = w === 'L' ? 'images/map.png' : 'images/darkworld.png';
+    im.setAttribute('href', iu);
+    im.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', iu);
+    im.addEventListener('error', artFallback);
+    S('text', { class:'ptitle', x:MAPW/2, y:-22 }, g).textContent = (w==='L' ? '◐ LIGHT WORLD' : '◑ DARK WORLD');
+  }
+  // layers for trails, atlas, links + dots (world coordinates)
+  S('g', { id:'fog' }, vp);
+  S('g', { id:'atlasg' }, vp);
+  S('g', { id:'trails' }, vp);
+  S('g', { id:'lnks' }, vp);
+  S('g', { id:'dots' }, vp);
+}
+
+/* ============================================================
+   Dots
+   ============================================================ */
+function buildDots(){
+  const gd = $('dots');
+  gd.innerHTML = '';
+  for (const e of ENTRANCES()){
+    const g = S('g', { class:'dot', 'data-id':e.id, transform:`translate(${px(e).toFixed(1)} ${py(e).toFixed(1)})` }, gd);
+    if (e.k === 'drop') S('circle', { r:6.5 }, g);
+    else S('rect', { x:-6, y:-6, width:12, height:12 }, g);
+    S('text', { class:'nm', y:-11 }, g).textContent = e.n;
+    S('text', { class:'ord', y:21 }, g);
+    g.addEventListener('click', ev => {
+      ev.stopPropagation();
+      if (dragged || adding) return;
+      select(e.id);
+    });
+    g.addEventListener('pointerenter', () => tipShow(e.id));
+    g.addEventListener('pointerleave', tipHide);
+  }
+  updateDots();
+}
+
+function firstVisitMap(){
+  const m = {};
+  for (const L of state.log) if (!(L.e in m)) m[L.e] = L.s;
+  return m;
+}
+
+function updateDots(){
+  const q = $('search').value.trim().toLowerCase();
+  const ord = firstVisitMap();
+  for (const g of $('dots').children){
+    const id = g.getAttribute('data-id');
+    const e = byId(id); if (!e) continue;
+    const st = statusOf(id);
+    const a = asg(id);
+    let cls = 'dot st-' + (st==='done' ? 'done' : st);
+    if (st === 'done') cls = 'dot st-done';
+    if (id === selId) cls += ' sel';
+    // filter
+    let vis = true;
+    if (filter === 'unknown') vis = (st === 'unknown');
+    else if (filter === 'mapped') vis = (st !== 'unknown');
+    else if (filter === 'dungeon') vis = (st === 'dungeon');
+    else if (filter === 'link') vis = !!(a && a.link);
+    else if (filter === 'dead') vis = (st === 'dead');
+    if (!vis) cls += ' fhide';
+    // search
+    if (q){
+      const hay = (e.n + ' ' + e.r + ' ' + (a ? (a.dest+' '+a.note) : '')).toLowerCase();
+      if (hay.includes(q)) cls += ' match';
+      else cls += ' dimmed';
+    }
+    g.setAttribute('class', cls);
+    const ot = g.querySelector('.ord');
+    if (id in ord){ ot.textContent = '#'+ord[id]; ot.classList.add('has'); }
+    else { ot.textContent = ''; ot.classList.remove('has'); }
+  }
+}
+
+/* ============================================================
+   Link threads
+   ============================================================ */
+function renderLinks(){
+  const gl = $('lnks');
+  gl.innerHTML = '';
+  const seen = new Set();
+  for (const id in state.assignments){
+    const a = state.assignments[id];
+    if (!a.link) continue;
+    const o = a.link;
+    const key = id < o ? id+'|'+o : o+'|'+id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const e1 = byId(id), e2 = byId(o);
+    if (!e1 || !e2) continue;
+    const x1 = px(e1), y1 = py(e1), x2 = px(e2), y2 = py(e2);
+    const dx = x2-x1, dy = y2-y1;
+    const dist = Math.hypot(dx, dy) || 1;
+    const lift = Math.min(150, 28 + dist*0.16);
+    // control point: midpoint pushed perpendicular (up-ish)
+    const mx = (x1+x2)/2, my = (y1+y2)/2;
+    const nx = -dy/dist, ny = dx/dist;
+    const sgn = ny < 0 ? 1 : -1; // bias upward
+    const cxp = mx + nx*lift*sgn, cyp = my + ny*lift*sgn;
+    const cross = e1.w !== e2.w;
+    S('path', { class: 'lnk' + (cross ? ' x' : ''), d:`M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${cxp.toFixed(1)} ${cyp.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}` }, gl);
+  }
+}
+
+/* ============================================================
+   Combos (autocomplete dropdowns)
+   ============================================================ */
+function makeCombo(inp, pop, getItems, onPick, opts){
+  opts = opts || {};
+  let items = [], act = -1;
+  function render(){
+    items = getItems(inp.value.trim());
+    if (!items.length){ pop.hidden = true; return; }
+    let html = '', lastG = null;
+    items.forEach((it, i) => {
+      if (it.g !== lastG){ html += '<div class="grp">'+esc(it.g)+'</div>'; lastG = it.g; }
+      html += '<button type="button" class="it'+(i===act?' act':'')+'" data-i="'+i+'">'+esc(it.label)+
+              (it.sub ? '<span class="s">'+esc(it.sub)+'</span>' : '')+'</button>';
+    });
+    pop.innerHTML = html;
+    pop.hidden = false;
+    const a = pop.querySelector('.it.act');
+    if (a) a.scrollIntoView({ block:'nearest' });
+  }
+  function pick(it){
+    pop.hidden = true; act = -1;
+    onPick(it);
+  }
+  inp.addEventListener('input', () => { act = -1; render(); if (opts.onType) opts.onType(); });
+  inp.addEventListener('focus', render);
+  inp.addEventListener('blur', () => setTimeout(() => { pop.hidden = true; }, 160));
+  inp.addEventListener('keydown', ev => {
+    if (ev.key === 'ArrowDown' && !pop.hidden){ act = Math.min(items.length-1, act+1); render(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowUp' && !pop.hidden){ act = Math.max(0, act-1); render(); ev.preventDefault(); }
+    else if (ev.key === 'Enter'){
+      if (!pop.hidden && items.length){ pick(items[act >= 0 ? act : 0]); ev.preventDefault(); }
+      else if (opts.onEnter){ opts.onEnter(); ev.preventDefault(); }
+    }
+    else if (ev.key === 'Escape'){ pop.hidden = true; }
+  });
+  pop.addEventListener('pointerdown', ev => ev.preventDefault());
+  pop.addEventListener('click', ev => {
+    const b = ev.target.closest('.it');
+    if (b) pick(items[+b.getAttribute('data-i')]);
+  });
+  return { hide: () => { pop.hidden = true; } };
+}
+
+function entItems(q, excludeId){
+  const lq = q.toLowerCase();
+  const out = [];
+  for (const w of ['L','D']){
+    let n = 0;
+    for (const e of ENTRANCES()){
+      if (e.w !== w || e.id === excludeId) continue;
+      if (lq && !e.n.toLowerCase().includes(lq) && !e.r.toLowerCase().includes(lq)) continue;
+      out.push({ g: w==='L' ? '◐ Light World' : '◑ Dark World', label: e.n,
+                 sub: e.r + (e.k==='drop' ? ' · drop' : ''), pick: { type:'ent', id:e.id } });
+      if (++n >= 9) break;
+    }
+  }
+  return out;
+}
+function destItems(q, withLinks, excludeId){
+  const lq = q.toLowerCase();
+  const out = [];
+  if (withLinks){
+    let n = 0;
+    for (const e of ENTRANCES()){
+      if (e.id === excludeId) continue;
+      if (lq && !e.n.toLowerCase().includes(lq)) continue;
+      out.push({ g:'⇆ Connects through to…', label:'⇆ '+e.n,
+                 sub:(e.w==='L'?'Light':'Dark')+' · '+e.r, pick:{ type:'link', id:e.id } });
+      if (++n >= (lq ? 7 : 4)) break;
+    }
+  }
+  let exact = false;
+  for (const grp of DESTS){
+    for (const d of grp.items){
+      if (lq){
+        if (!d.toLowerCase().includes(lq)) continue;
+        if (d.toLowerCase() === lq) exact = true;
+      }
+      out.push({ g: grp.g, label: d, pick: { type:'dest', v:d } });
+    }
+  }
+  if (q && !exact) out.push({ g:'Custom', label:'Use “'+q+'”', pick:{ type:'dest', v:q } });
+  return out;
+}
+function resolveEntrance(text){
+  const t = text.trim().toLowerCase();
+  if (!t) return null;
+  let hit = ENTRANCES().find(e => e.n.toLowerCase() === t);
+  if (hit) return hit.id;
+  const starts = ENTRANCES().filter(e => e.n.toLowerCase().startsWith(t));
+  if (starts.length === 1) return starts[0].id;
+  const inc = ENTRANCES().filter(e => e.n.toLowerCase().includes(t));
+  if (inc.length === 1) return inc[0].id;
+  return null;
+}
+
+/* ============================================================
+   Linking
+   ============================================================ */
+function unlink(id){
+  const a = asg(id);
+  if (a && a.link){
+    const o = asg(a.link);
+    if (o && o.link === id) o.link = '';
+    a.link = '';
+  }
+}
+function doLink(a, b){
+  if (a === b) return;
+  unlink(a); unlink(b);
+  ensureAsg(a).link = b;
+  ensureAsg(b).link = a;
+}
+
+/* ============================================================
+   Quick log
+   ============================================================ */
+let qAtId = null, qToPick = null;
+
+makeCombo($('qAt'), $('qAtPop'),
+  q => entItems(q),
+  it => { qAtId = it.pick.id; $('qAt').value = nameOf(qAtId); $('qTo').focus(); },
+  { onType: () => { qAtId = null; }, onEnter: () => $('qTo').focus() });
+
+makeCombo($('qTo'), $('qToPop'),
+  q => destItems(q, true, qAtId || resolveEntrance($('qAt').value)),
+  it => {
+    qToPick = it.pick;
+    $('qTo').value = it.pick.type === 'link' ? '⇆ ' + nameOf(it.pick.id) : it.pick.v;
+    commitLog();
+  },
+  { onType: () => { qToPick = null; }, onEnter: commitLog });
+
+$('bLog').addEventListener('click', commitLog);
+
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+function commitLog(){
+  const atId = qAtId || resolveEntrance($('qAt').value);
+  if (!atId){ shake($('qAt')); toast('Pick a real entrance first'); $('qAt').focus(); return; }
+  let pick = qToPick;
+  if (!pick){
+    const t = $('qTo').value.trim();
+    if (!t){ shake($('qTo')); $('qTo').focus(); return; }
+    const asEnt = t.startsWith('⇆') ? resolveEntrance(t.slice(1)) : null;
+    pick = asEnt ? { type:'link', id:asEnt } : { type:'dest', v:t };
+  }
+  pushUndo();
+  const a = ensureAsg(atId);
+  let text;
+  if (pick.type === 'link'){
+    doLink(atId, pick.id);
+    text = '⇆ ' + nameOf(pick.id);
+  } else {
+    a.dest = pick.v;
+    if (pick.v === 'Nothing (dead end)') a.deadEnd = true;
+    text = '→ ' + pick.v;
+  }
+  state.seq++;
+  state.log.push({ s: state.seq, t: Date.now(), e: atId, x: text });
+  select(atId);
+  flashDot(atId);
+  refresh(); save();
+  toast('Logged #' + state.seq);
+  qAtId = null; qToPick = null;
+  $('qAt').value = ''; $('qTo').value = '';
+  $('qAt').focus();
+}
+
+function flashDot(id){
+  const g = $('dots').querySelector('[data-id="'+id+'"]');
+  if (!g) return;
+  g.classList.add('flash');
+  setTimeout(() => g.classList.remove('flash'), 1100);
+}
+
+/* ============================================================
+   Detail panel
+   ============================================================ */
+function isCustom(id){ return state.customs.some(c => c.id === id); }
+
+function select(id){
+  selId = id;
+  const e = byId(id);
+  if (!e){ hideDetail(); updateDots(); return; }
+  const a = asg(id) || {};
+  $('dName').textContent = e.n;
+  $('dMeta').textContent = (e.w==='L' ? '◐ LIGHT WORLD' : '◑ DARK WORLD') + ' · ' + e.r + ' · ' + (e.k==='drop' ? 'drop' : 'door');
+  $('dDest').value = a.dest || '';
+  $('dLink').value = a.link ? nameOf(a.link) : '';
+  $('dDead').checked = !!a.deadEnd;
+  $('dNote').value = a.note || '';
+  $('dDelete').hidden = !isCustom(id);
+  $('detail').hidden = false;
+  updateDots();
+}
+function hideDetail(){ selId = null; $('detail').hidden = true; }
+
+makeCombo($('dDest'), $('dDestPop'),
+  q => destItems(q, false, selId),
+  it => {
+    if (!selId) return;
+    pushUndo();
+    const a = ensureAsg(selId);
+    a.dest = it.pick.v;
+    if (it.pick.v === 'Nothing (dead end)'){ a.deadEnd = true; $('dDead').checked = true; }
+    else if (a.room != null && it.pick.v && it.pick.v.indexOf('Room 0x') !== 0)
+      state.roomNames[a.room] = it.pick.v;
+    $('dDest').value = it.pick.v;
+    refresh(); save();
+  },
+  { onEnter: () => {
+      if (!selId) return;
+      const v = $('dDest').value.trim();
+      pushUndo();
+      const a = ensureAsg(selId);
+      a.dest = v;
+      if (a.room != null && v && v !== 'Nothing (dead end)' && v.indexOf('Room 0x') !== 0)
+        state.roomNames[a.room] = v;
+      refresh(); save();
+    } });
+
+makeCombo($('dLink'), $('dLinkPop'),
+  q => {
+    const out = [];
+    const a = selId && asg(selId);
+    if (a && a.link) out.push({ g:'Linked', label:'✕ Unlink from ' + nameOf(a.link), pick:{ type:'unlink' } });
+    return out.concat(entItems(q, selId));
+  },
+  it => {
+    if (!selId) return;
+    pushUndo();
+    if (it.pick.type === 'unlink'){ unlink(selId); $('dLink').value = ''; }
+    else { doLink(selId, it.pick.id); $('dLink').value = nameOf(it.pick.id); }
+    refresh(); save();
+  });
+
+$('dDead').addEventListener('change', () => {
+  if (!selId) return;
+  pushUndo();
+  ensureAsg(selId).deadEnd = $('dDead').checked;
+  refresh(); save();
+});
+let noteTimer = null;
+$('dNote').addEventListener('input', () => {
+  if (!selId) return;
+  ensureAsg(selId).note = $('dNote').value;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => save(), 500);
+});
+$('dClear').addEventListener('click', () => {
+  if (!selId) return;
+  pushUndo();
+  unlink(selId);
+  delete state.assignments[selId];
+  select(selId);
+  refresh(); save();
+  toast('Cleared');
+});
+$('dCenter').addEventListener('click', () => { if (selId) centerOn(selId); });
+$('dDelete').addEventListener('click', () => {
+  if (!selId || !isCustom(selId)) return;
+  pushUndo();
+  unlink(selId);
+  delete state.assignments[selId];
+  state.customs = state.customs.filter(c => c.id !== selId);
+  state.log = state.log.filter(L => L.e !== selId);
+  hideDetail();
+  rebuild(); save();
+  toast('Pin deleted');
+});
+
+/* ============================================================
+   Pan / zoom (pointer events, pinch-friendly)
+   ============================================================ */
+const map = $('map'), vpEl = $('vp');
+let view = { x:0, y:0, k:1 };
+let dragged = false;
+const pointers = new Map();
+let pinchPrev = null;
+
+function applyView(){
+  vpEl.setAttribute('transform', `translate(${view.x.toFixed(2)} ${view.y.toFixed(2)}) scale(${view.k.toFixed(4)})`);
+}
+function vbScale(){
+  const r = map.getBoundingClientRect();
+  return { r, s: Math.min(r.width/1720, r.height/815) };
+}
+function vbPoint(cx, cy){
+  const { r, s } = vbScale();
+  return { x: (cx - r.left - (r.width - 1720*s)/2) / s,
+           y: (cy - r.top  - (r.height - 815*s)/2) / s };
+}
+function worldPoint(cx, cy){
+  const p = vbPoint(cx, cy);
+  return { x: (p.x - view.x)/view.k, y: (p.y - view.y)/view.k };
+}
+function zoomAtVB(p, f){
+  const k2 = clamp(view.k * f, 0.35, 9);
+  view.x = p.x - (p.x - view.x) * (k2/view.k);
+  view.y = p.y - (p.y - view.y) * (k2/view.k);
+  view.k = k2;
+  applyView();
+}
+map.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  zoomAtVB(vbPoint(ev.clientX, ev.clientY), ev.deltaY < 0 ? 1.18 : 1/1.18);
+}, { passive:false });
+
+map.addEventListener('pointerdown', ev => {
+  map.setPointerCapture(ev.pointerId);
+  pointers.set(ev.pointerId, { x:ev.clientX, y:ev.clientY });
+  dragged = false;
+  pinchPrev = null;
+  tipHide();
+});
+map.addEventListener('pointermove', ev => {
+  if (!pointers.has(ev.pointerId)){
+    if (!$('tip').hidden) tipMove(ev);
+    return;
+  }
+  const prev = pointers.get(ev.pointerId);
+  pointers.set(ev.pointerId, { x:ev.clientX, y:ev.clientY });
+  const { s } = vbScale();
+  if (pointers.size === 1){
+    const dx = ev.clientX - prev.x, dy = ev.clientY - prev.y;
+    if (Math.abs(dx) + Math.abs(dy) > 2) dragged = true;
+    view.x += dx / s; view.y += dy / s;
+    applyView();
+  } else if (pointers.size === 2){
+    dragged = true;
+    const pts2 = [...pointers.values()];
+    const d = Math.hypot(pts2[0].x - pts2[1].x, pts2[0].y - pts2[1].y);
+    const mid = { x:(pts2[0].x + pts2[1].x)/2, y:(pts2[0].y + pts2[1].y)/2 };
+    if (pinchPrev){
+      zoomAtVB(vbPoint(mid.x, mid.y), d / pinchPrev.d);
+      view.x += (mid.x - pinchPrev.mid.x) / s;
+      view.y += (mid.y - pinchPrev.mid.y) / s;
+      applyView();
+    }
+    pinchPrev = { d, mid };
+  }
+});
+function endPointer(ev){
+  pointers.delete(ev.pointerId);
+  if (pointers.size < 2) pinchPrev = null;
+  setTimeout(() => { dragged = false; }, 0);
+}
+map.addEventListener('pointerup', endPointer);
+map.addEventListener('pointercancel', endPointer);
+
+map.addEventListener('click', ev => {
+  if (dragged) return;
+  if (adding){ placePin(ev); return; }
+  if (ev.target === map || ev.target.closest('#vp') === vpEl && !ev.target.closest('.dot')){
+    // background click: deselect
+    hideDetail(); updateDots();
+  }
+});
+
+function fitRect(rx, ry, rw, rh){
+  const k = clamp(Math.min(1720/rw, 815/rh), 0.35, 9);
+  view = { x:(1720 - rw*k)/2 - rx*k, y:(815 - rh*k)/2 - ry*k, k };
+  applyView();
+}
+$('zIn').addEventListener('click', () => zoomAtVB({ x:860, y:407 }, 1.3));
+$('zOut').addEventListener('click', () => zoomAtVB({ x:860, y:407 }, 1/1.3));
+$('zL').addEventListener('click', () => fitRect(15, 15, 800, 790));
+$('zD').addEventListener('click', () => fitRect(905, 15, 800, 790));
+$('zA').addEventListener('click', () => fitRect(0, 0, 1720, 815));
+
+function applyArt(){
+  const on = state.art !== false && !window.__artFail;
+  document.body.classList.toggle('artmode', on);
+  const b = $('zArt');
+  if (b){ b.classList.toggle('on', on); b.hidden = !!window.__artFail; }
+}
+function artFallback(){
+  if (window.__artFail) return;
+  window.__artFail = true;
+  applyArt();
+}
+$('zArt').addEventListener('click', () => {
+  state.art = state.art === false;
+  applyArt();
+  save();
+});
+
+function centerOn(id){
+  const e = byId(id); if (!e) return;
+  const k = Math.max(view.k, 1.6);
+  const tx = 860 - px(e)*k, ty = 407 - py(e)*k;
+  const from = { x:view.x, y:view.y, k:view.k };
+  const t0 = performance.now();
+  function step(t){
+    const u = Math.min(1, (t - t0)/240);
+    const ease = u*(2-u);
+    view.x = from.x + (tx - from.x)*ease;
+    view.y = from.y + (ty - from.y)*ease;
+    view.k = from.k + (k - from.k)*ease;
+    applyView();
+    if (u < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ============================================================
+   Tooltip
+   ============================================================ */
+let tipId = null;
+function tipShow(id){
+  if (pointers.size) return;
+  tipId = id;
+  const e = byId(id); if (!e) return;
+  const a = asg(id);
+  let html = '<div class="tn">'+esc(e.n)+'</div>' +
+             '<div class="tm">'+(e.w==='L'?'LIGHT WORLD':'DARK WORLD')+' · '+esc(e.r)+' · '+(e.k==='drop'?'DROP':'DOOR')+'</div>';
+  if (a && a.dest)  html += '<div class="ta">→ '+esc(a.dest)+'</div>';
+  if (a && a.link)  html += '<div class="ta">⇆ '+esc(nameOf(a.link))+'</div>';
+  if (a && a.deadEnd) html += '<div class="ta">✖ dead end</div>';
+  if (a && a.note)  html += '<div class="tnote">'+esc(a.note)+'</div>';
+  if (!a || (!a.dest && !a.link && !a.deadEnd)) html += '<div class="ta">Unmapped — click to set</div>';
+  const tip = $('tip');
+  tip.innerHTML = html;
+  tip.hidden = false;
+}
+function tipMove(ev){
+  const tip = $('tip');
+  if (tip.hidden) return;
+  let x = ev.clientX + 16, y = ev.clientY + 18;
+  if (x + 260 > window.innerWidth)  x = ev.clientX - 256;
+  if (y + 120 > window.innerHeight) y = ev.clientY - 110;
+  tip.style.left = x + 'px';
+  tip.style.top  = y + 'px';
+}
+function tipHide(){ tipId = null; $('tip').hidden = true; }
+
+/* ============================================================
+   Custom pins
+   ============================================================ */
+$('bAddPin').addEventListener('click', () => setAdding(!adding));
+function setAdding(on){
+  adding = on;
+  map.classList.toggle('adding', on);
+  $('bAddPin').textContent = on ? '✕ Cancel placing' : '+ Custom pin';
+  if (on) toast('Click a map panel to place the pin');
+}
+function placePin(ev){
+  const w = worldPoint(ev.clientX, ev.clientY);
+  let world = null, lx = 0, ly = 0;
+  if (w.x >= PANEL_X.L && w.x <= PANEL_X.L + MAPW) world = 'L';
+  else if (w.x >= PANEL_X.D && w.x <= PANEL_X.D + MAPW) world = 'D';
+  if (!world || w.y < MAPT || w.y > MAPT + MAPH){ toast('Click inside a map panel'); return; }
+  lx = clamp((w.x - PANEL_X[world]) / MAPW * 100, 0, 100);
+  ly = clamp((w.y - MAPT) / MAPH * 100, 0, 100);
+  setAdding(false);
+  openModal(
+    '<h2>New custom pin</h2>' +
+    '<label for="cpName">Name</label><input id="cpName" placeholder="e.g. Mystery cave">' +
+    '<label for="cpKind">Type</label>' +
+    '<div class="row" style="justify-content:flex-start">' +
+    '<label class="ck"><input type="radio" name="cpKind" value="door" checked> Door</label>' +
+    '<label class="ck"><input type="radio" name="cpKind" value="drop"> Drop</label></div>' +
+    '<div class="row"><button class="btn" data-x="cancel">Cancel</button>' +
+    '<button class="btn gold" data-x="ok">Add pin</button></div>',
+    box => {
+      box.querySelector('#cpName').focus();
+      box.addEventListener('click', ev2 => {
+        const b = ev2.target.closest('[data-x]'); if (!b) return;
+        if (b.getAttribute('data-x') === 'ok'){
+          const nm = box.querySelector('#cpName').value.trim() || 'Custom pin';
+          const kind = box.querySelector('input[name="cpKind"]:checked').value;
+          pushUndo();
+          const id = 'c_' + Date.now().toString(36);
+          state.customs.push({ id, n:nm, x:+lx.toFixed(1), y:+ly.toFixed(1), k:kind, w:world, r:'Custom' });
+          closeModal();
+          rebuild(); save();
+          select(id);
+          toast('Pin added');
+        } else closeModal();
+      });
+      box.querySelector('#cpName').addEventListener('keydown', ev2 => {
+        if (ev2.key === 'Enter') box.querySelector('[data-x="ok"]').click();
+      });
+    });
+}
+
+/* ============================================================
+   Transition log panel
+   ============================================================ */
+function renderLog(){
+  const list = $('logList');
+  $('logN').textContent = state.log.length ? '('+state.log.length+')' : '';
+  if (!state.log.length){
+    list.innerHTML = '<div class="lempty">Nothing yet. Walk through a door and log it!</div>';
+    return;
+  }
+  let html = '';
+  for (let i = state.log.length - 1; i >= 0; i--){
+    const L = state.log[i];
+    html += '<div class="lrow"><span class="ls">#'+L.s+'</span>' +
+            '<button type="button" class="ln" data-e="'+esc(L.e)+'">'+esc(nameOf(L.e))+'</button>' +
+            '<span class="lx">'+esc(L.x)+'</span>' +
+            '<span class="lt">'+timeStr(L.t)+'</span>' +
+            '<button type="button" class="ld" data-i="'+i+'" title="remove log entry">✕</button></div>';
+  }
+  list.innerHTML = html;
+}
+$('logList').addEventListener('click', ev => {
+  const nb = ev.target.closest('.ln');
+  if (nb){ const id = nb.getAttribute('data-e'); select(id); centerOn(id); return; }
+  const db = ev.target.closest('.ld');
+  if (db){
+    pushUndo();
+    state.log.splice(+db.getAttribute('data-i'), 1);
+    refresh(); save();
+  }
+});
+
+/* ============================================================
+   Stats
+   ============================================================ */
+function renderStats(){
+  const all = ENTRANCES();
+  let mapped = 0, dead = 0;
+  const dgn = new Set();
+  const pairs = new Set();
+  for (const e of all){
+    const st = statusOf(e.id);
+    if (st !== 'unknown') mapped++;
+    if (st === 'dead') dead++;
+    const a = asg(e.id);
+    if (a && a.dest && DUNGEON_SET.has(a.dest)) dgn.add(a.dest);
+    if (a && a.link) pairs.add(e.id < a.link ? e.id+'|'+a.link : a.link+'|'+e.id);
+  }
+  $('stats').innerHTML =
+    '<b>'+mapped+'</b>/'+all.length+' mapped · ' +
+    '<span class="l">⇆ '+pairs.size+' links</span> · ' +
+    '⚑ <b>'+dgn.size+'</b>/14 dungeons · ' +
+    '<span class="d">✖ '+dead+'</span> · ' +
+    '<span class="u">'+(all.length - mapped)+' unknown</span>';
+}
+
+/* ============================================================
+   Storage adapter  (artifact cloud → localStorage → memory)
+   ============================================================ */
+let backend = 'memory';
+function detectBackend(){
+  try {
+    if (typeof window.storage === 'object' && window.storage &&
+        typeof window.storage.get === 'function' && typeof window.storage.set === 'function'){
+      backend = 'cloud'; return;
+    }
+  } catch (e) {}
+  try {
+    const t = '__alttp_t';
+    localStorage.setItem(t, '1'); localStorage.removeItem(t);
+    backend = 'local';
+  } catch (e) { backend = 'memory'; }
+}
+async function storeLoad(){
+  if (backend === 'cloud'){
+    try {
+      const r = await window.storage.get(KEY);
+      if (r && r.value) return JSON.parse(r.value);
+    } catch (e) {}
+    return null;
+  }
+  if (backend === 'local'){
+    try {
+      const v = localStorage.getItem(KEY);
+      return v ? JSON.parse(v) : null;
+    } catch (e) { return null; }
+  }
+  return null;
+}
+async function storeSave(){
+  const json = JSON.stringify(state);
+  let ok = false;
+  if (backend === 'cloud'){
+    try { const r = await window.storage.set(KEY, json); ok = !!r; } catch (e) { ok = false; }
+  } else if (backend === 'local'){
+    try { localStorage.setItem(KEY, json); ok = true; } catch (e) { ok = false; }
+  }
+  paintSave(ok);
+}
+function paintSave(ok){
+  const el = $('saveState');
+  if (backend === 'memory'){
+    el.textContent = '⚠ MEMORY ONLY — EXPORT TO KEEP YOUR MAP';
+    el.classList.add('warn');
+  } else if (ok === false){
+    el.textContent = '⚠ SAVE FAILED — EXPORT AS BACKUP';
+    el.classList.add('warn');
+  } else {
+    el.textContent = backend === 'cloud' ? '◆ SAVED · CLAUDE CLOUD' : '◆ SAVED · THIS BROWSER';
+    el.classList.remove('warn');
+  }
+}
+let saveTimer = null, savePending = false;
+function save(){
+  savePending = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { savePending = false; storeSave(); }, 600);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && savePending){ clearTimeout(saveTimer); savePending = false; storeSave(); }
+});
+
+/* ============================================================
+   Modals & toast
+   ============================================================ */
+function openModal(html, bind){
+  const mb = $('mbox');
+  mb.innerHTML = html;
+  $('modal').hidden = false;
+  if (bind) bind(mb);
+}
+function closeModal(){ $('modal').hidden = true; $('mbox').innerHTML = ''; }
+$('modal').addEventListener('click', ev => { if (ev.target === $('modal')) closeModal(); });
+
+function confirmModal(title, msg, okLabel, cb){
+  openModal(
+    '<h2>'+esc(title)+'</h2><p>'+esc(msg)+'</p>' +
+    '<div class="row"><button class="btn" data-x="cancel">Cancel</button>' +
+    '<button class="btn danger" data-x="ok">'+esc(okLabel)+'</button></div>',
+    box => box.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-x]'); if (!b) return;
+      if (b.getAttribute('data-x') === 'ok'){ closeModal(); cb(); }
+      else closeModal();
+    }));
+}
+
+let toastTimer = null;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
+}
+
+/* ============================================================
+   Header actions
+   ============================================================ */
+$('bUndo').addEventListener('click', undo);
+
+$('bCopy').addEventListener('click', () => {
+  const lines = ['ALTTP ENTRANCE MAP — ' + new Date().toLocaleString(), ''];
+  for (const w of ['L','D']){
+    lines.push(w === 'L' ? '◐ LIGHT WORLD' : '◑ DARK WORLD');
+    let any = false;
+    for (const e of ENTRANCES()){
+      if (e.w !== w) continue;
+      const a = asg(e.id);
+      if (!a || (!a.dest && !a.link && !a.deadEnd && !a.note)) continue;
+      any = true;
+      let s = '  • ' + e.n;
+      if (a.link) s += ' ⇆ ' + nameOf(a.link);
+      if (a.dest) s += ' → ' + a.dest;
+      if (a.deadEnd) s += ' ✖';
+      if (a.note) s += '  (' + a.note + ')';
+      lines.push(s);
+    }
+    if (!any) lines.push('  (nothing mapped yet)');
+    lines.push('');
+  }
+  const txt = lines.join('\n');
+  openModal(
+    '<h2>Map as text</h2><textarea readonly id="cpyTa"></textarea>' +
+    '<div class="row"><button class="btn" data-x="close">Close</button>' +
+    '<button class="btn gold" data-x="copy">Copy</button></div>',
+    box => {
+      box.querySelector('#cpyTa').value = txt;
+      box.addEventListener('click', ev => {
+        const b = ev.target.closest('[data-x]'); if (!b) return;
+        if (b.getAttribute('data-x') === 'copy'){
+          const ta = box.querySelector('#cpyTa');
+          ta.select();
+          let done = false;
+          if (navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(txt).then(() => toast('Copied!')).catch(() => {});
+            done = true;
+          }
+          if (!done){ try { document.execCommand('copy'); toast('Copied!'); } catch (e) {} }
+        } else closeModal();
+      });
+    });
+});
+
+$('bExport').addEventListener('click', () => {
+  const json = JSON.stringify(state, null, 2);
+  openModal(
+    '<h2>Export save</h2><p>Download a backup file, or copy the JSON.</p>' +
+    '<textarea readonly id="expTa"></textarea>' +
+    '<div class="row"><button class="btn" data-x="close">Close</button>' +
+    '<button class="btn" data-x="copy">Copy</button>' +
+    '<button class="btn gold" data-x="dl">Download .json</button></div>',
+    box => {
+      box.querySelector('#expTa').value = json;
+      box.addEventListener('click', ev => {
+        const b = ev.target.closest('[data-x]'); if (!b) return;
+        const x = b.getAttribute('data-x');
+        if (x === 'dl'){
+          const blob = new Blob([json], { type:'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'alttp-entrance-map.json';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+          toast('Downloaded');
+        } else if (x === 'copy'){
+          if (navigator.clipboard && navigator.clipboard.writeText)
+            navigator.clipboard.writeText(json).then(() => toast('Copied!')).catch(() => {});
+        } else closeModal();
+      });
+    });
+});
+
+$('bImport').addEventListener('click', () => {
+  openModal(
+    '<h2>Import save</h2><p>Choose a backup file or paste JSON below.</p>' +
+    '<textarea id="impTa" placeholder=\'{"assignments": …}\'></textarea>' +
+    '<div class="row"><button class="btn" data-x="file">Choose file…</button>' +
+    '<button class="btn" data-x="close">Cancel</button>' +
+    '<button class="btn gold" data-x="load">Load</button></div>',
+    box => {
+      box.addEventListener('click', ev => {
+        const b = ev.target.closest('[data-x]'); if (!b) return;
+        const x = b.getAttribute('data-x');
+        if (x === 'file') $('fileIn').click();
+        else if (x === 'load') applyImport(box.querySelector('#impTa').value);
+        else closeModal();
+      });
+    });
+});
+$('fileIn').addEventListener('change', () => {
+  const f = $('fileIn').files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => applyImport(String(rd.result));
+  rd.readAsText(f);
+  $('fileIn').value = '';
+});
+function applyImport(text){
+  let j = null;
+  try { j = JSON.parse(text); } catch (e) {}
+  if (!j || typeof j !== 'object' || typeof j.assignments !== 'object'){
+    toast('That doesn\'t look like a mapper save'); return;
+  }
+  pushUndo();
+  state = {
+    assignments: j.assignments || {},
+    log: Array.isArray(j.log) ? j.log : [],
+    customs: Array.isArray(j.customs) ? j.customs : [],
+    seq: typeof j.seq === 'number' ? j.seq : (Array.isArray(j.log) ? j.log.length : 0),
+    roomNames: (j.roomNames && typeof j.roomNames === 'object') ? j.roomNames : {},
+    art: j.art !== false,
+    trk: (j.trk && typeof j.trk.url === 'string') ? { url: j.trk.url, auto: j.trk.auto !== false, fog: j.trk.fog !== false } : (state.trk || { url:'', auto:true, fog:true }),
+    atlas: (j.atlas && typeof j.atlas === 'object') ? j.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
+  };
+  ensureAtlas();
+  hideDetail();
+  closeModal();
+  rebuild(); save();
+  toast('Imported!');
+}
+
+$('bReset').addEventListener('click', () => {
+  confirmModal('Reset everything?', 'This wipes all mapped entrances, links, notes and the log. Undo can bring it back this session, and Export first is even safer.', 'Reset it', () => {
+    pushUndo();
+    state = { assignments:{}, log:[], customs:[], seq:0, art: state.art !== false,
+      roomNames: state.roomNames || {}, trk: state.trk || { url:'', auto:true, fog:true },
+      atlas:{ ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } } };
+    hideDetail();
+    rebuild(); save();
+    toast('Fresh slate');
+  });
+});
+
+$('bHelp').addEventListener('click', () => {
+  openModal(
+    '<h2>How to use</h2>' +
+    '<p><b>Log as you play:</b> type where you went in (“I went in at…”), then what you found — a dungeon, a cave, or <b>⇆ another entrance</b> if it tunnels through. <kbd>Enter</kbd> commits.</p>' +
+    '<p><b>Or click a pin</b> on the map to set its destination, link it to its other side, mark it a dead end, or jot a note.</p>' +
+    '<p><b>Map:</b> drag to pan, scroll or pinch to zoom, hover pins for details. Squares are doors, circles are drops. Blue threads are same-world connectors; dashed violet threads cross worlds.</p>' +
+    '<p><b>Colors:</b> gray unknown · green mapped · gold dungeon · blue linked · red dead end.</p>' +
+    '<p><b>Keys:</b> <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Esc</kbd> closes things.</p>' +
+    '<p><b>Emulator link:</b> run <b>SNI</b> (or QUsb2Snes) and hook your emulator to it — snes9x-rr + Connector.lua, a snes9x-nwa build, BizHawk, RetroArch with the bsnes-mercury core, or an FXPak — then hit Connect. Entrances, connectors and dungeons map themselves as you play, and everything stays editable. Plain snes9x cannot expose memory, so use one of those builds. If the connection is blocked inside claude.ai, download the file and open it locally.</p>' +
+    '<p><b>Auto-map atlas:</b> while connected, your overworld path draws onto both world maps, and every interior room you visit assembles into a stitched underworld atlas below them — the <b>UW</b> button jumps to it. Cells are tinted by dungeon and tagged with their floor; dashed trails mean the lower layer. Gold and pink door markers show where each room touches the Light or Dark World (hover one for the entrance name), bright ticks bridge doorways between adjacent rooms, and dashed green curves trace stairs, drops and warps between distant ones — the map a door-randomized seed needs. The overworld fogs itself too: screens you have not stepped on stay shaded until you do — toggle it in the Emulator Link card. For the real game maps, keep images/map.png and images/darkworld.png in an images folder next to this file: the ART button switches between them and the built-in schematic, and if the files are missing it falls back automatically. The log only records discoveries, so repeat trips just flash the pin.</p>' +
+    '<p><b>Saving:</b> automatic. As a Claude artifact it saves to the cloud; saved as a local file it uses your browser\'s storage. Export makes a portable backup either way.</p>' +
+    '<div class="row"><button class="btn gold" data-x="ok">Got it</button></div>',
+    box => box.addEventListener('click', ev => {
+      if (ev.target.closest('[data-x]')) closeModal();
+    }));
+});
+
+/* ============================================================
+   Search / filters / toggles / keys
+   ============================================================ */
+$('search').addEventListener('input', updateDots);
+$('chips').addEventListener('click', ev => {
+  const c = ev.target.closest('.chip'); if (!c) return;
+  filter = c.getAttribute('data-f');
+  for (const ch of $('chips').children) ch.classList.toggle('on', ch === c);
+  updateDots();
+});
+$('ckNames').addEventListener('change', () => map.classList.toggle('show-names', $('ckNames').checked));
+$('ckOrder').addEventListener('change', () => map.classList.toggle('show-order', $('ckOrder').checked));
+
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape'){
+    if (!$('modal').hidden) closeModal();
+    else if (adding) setAdding(false);
+    else if (selId){ hideDetail(); updateDots(); }
+    return;
+  }
+  const tag = ev.target && ev.target.tagName;
+  if ((tag === 'INPUT' || tag === 'TEXTAREA') && !(ev.ctrlKey || ev.metaKey)) return;
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z' && tag !== 'INPUT' && tag !== 'TEXTAREA'){
+    ev.preventDefault();
+    undo();
+  }
+});
+
+/* ============================================================
+   Auto-map atlas — traversal trails + stitched underworld
+   The underworld really is one 16×19 grid of 512px supertiles;
+   room id gives the cell (col = id & 0xF, row = id >> 4) and
+   Link's coords masked to 511 give his spot inside it.
+   ============================================================ */
+const ATLAS = { CS:46, COLS:16, ROWS:19, X:496, Y:920 };
+
+function ensureAtlas(){
+  if (!state.atlas || typeof state.atlas !== 'object') state.atlas = {};
+  const a = state.atlas;
+  if (!a.ow || typeof a.ow !== 'object') a.ow = {};
+  if (!Array.isArray(a.ow.L)) a.ow.L = [];
+  if (!Array.isArray(a.ow.D)) a.ow.D = [];
+  if (!a.uw || typeof a.uw !== 'object') a.uw = {};
+  if (!a.seen || typeof a.seen !== 'object') a.seen = {};
+  if (!a.seen.L || typeof a.seen.L !== 'object') a.seen.L = {};
+  if (!a.seen.D || typeof a.seen.D !== 'object') a.seen.D = {};
+  if (!Array.isArray(a.eg)) a.eg = [];
+  return a;
+}
+function trailCount(segs){ let n = 0; for (const s of segs) n += s.length >> 1; return n; }
+function trailThin(segs, budget){
+  for (let i = 0; i < segs.length && trailCount(segs) > budget; i++){
+    const s = segs[i];
+    if (s.length <= 8) continue;
+    const out = [];
+    for (let j = 0; j < s.length - 2; j += 4) out.push(s[j], s[j+1]);
+    out.push(s[s.length-2], s[s.length-1]);
+    segs[i] = out;
+  }
+}
+function trailPush(segs, x, y, minD, brk, budget){
+  const s = segs[segs.length - 1];
+  if (s && s.length >= 2){
+    const d = Math.hypot(x - s[s.length-2], y - s[s.length-1]);
+    if (d < minD) return false;
+    if (d > brk) segs.push([x, y]);
+    else s.push(x, y);
+  } else segs.push([x, y]);
+  trailThin(segs, budget);
+  return true;
+}
+
+let atlasTimer = null;
+function atlasDirty(){
+  if (atlasTimer) return;
+  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); }, 700);
+}
+function renderTrails(){
+  const g = $('trails'); if (!g) return;
+  g.innerHTML = '';
+  const a = state.atlas; if (!a || !a.ow) return;
+  for (const w of ['L','D']){
+    for (const s of (a.ow[w] || [])){
+      if (s.length < 4) continue;
+      let pts = '';
+      for (let i = 0; i < s.length; i += 2)
+        pts += (PANEL_X[w] + s[i]/4096*MAPW).toFixed(1) + ',' + (MAPT + s[i+1]/4096*MAPH).toFixed(1) + ' ';
+      S('polyline', { class:'trail ' + (w === 'L' ? 'tw-l' : 'tw-d'), points: pts }, g);
+    }
+  }
+}
+function renderFog(){
+  const g = $('fog'); if (!g) return;
+  g.innerHTML = '';
+  const ck = $('ckFog');
+  if (ck && !ck.checked) return;
+  const a = state.atlas;
+  const seen = a && a.seen ? a.seen : null;
+  if (!seen) return;
+  const cw = MAPW/8, ch = MAPH/8;
+  for (const w of ['L','D']){
+    const sw = seen[w] || {};
+    const n = Object.keys(sw).length;
+    if (!n) continue;                       // an untouched world stays unfogged
+    for (let cell = 0; cell < 64; cell++){
+      if (sw[cell]) continue;
+      S('rect', { class:'fogcell',
+        x:(PANEL_X[w] + (cell & 7)*cw).toFixed(1), y:(MAPT + (cell >> 3)*ch).toFixed(1),
+        width:cw.toFixed(1), height:ch.toFixed(1) }, g);
+    }
+    S('text', { class:'fogct', x:PANEL_X[w] + MAPW, y:MAPT - 22 }, g)
+      .textContent = n + '/64 explored';
+  }
+}
+const DGN_HUE = [210, 48, 110, 35, 268, 95, 285, 25, 322, 195, 48, 320, 14, 0];
+function atlasVisitedBounds(){
+  const a = state.atlas;
+  const rooms = a && a.uw ? Object.keys(a.uw) : [];
+  if (!rooms.length) return { x:ATLAS.X-30, y:ATLAS.Y-60, w:ATLAS.COLS*ATLAS.CS+60, h:200 };
+  let c0 = 16, c1 = 0, r0 = 32, r1 = 0;
+  for (const rk of rooms){
+    const room = +rk, c = room & 0xF, r = (room >> 4) & 0x1F;
+    if (r >= ATLAS.ROWS) continue;
+    c0 = Math.min(c0, c); c1 = Math.max(c1, c);
+    r0 = Math.min(r0, r); r1 = Math.max(r1, r);
+  }
+  const pad = ATLAS.CS;
+  return { x: ATLAS.X + c0*ATLAS.CS - pad, y: ATLAS.Y + r0*ATLAS.CS - 60,
+           w: (c1 - c0 + 1)*ATLAS.CS + pad*2, h: (r1 - r0 + 1)*ATLAS.CS + 60 + pad };
+}
+function renderAtlas(){
+  const g = $('atlasg'); if (!g) return;
+  g.innerHTML = '';
+  const a = state.atlas;
+  const rooms = a && a.uw ? Object.keys(a.uw).map(Number).filter(r => ((r >> 4) & 0x1F) < ATLAS.ROWS) : [];
+  const W = ATLAS.COLS*ATLAS.CS;
+  const rows = rooms.length ? Math.min(ATLAS.ROWS, Math.max(...rooms.map(r => (r >> 4) & 0x1F)) + 1) : 4;
+  S('rect', { x:ATLAS.X-16, y:ATLAS.Y-52, width:W+32, height:rows*ATLAS.CS+72, class:'apanel' }, g);
+  S('text', { class:'ptitle', 'text-anchor':'middle', x:ATLAS.X + W/2, y:ATLAS.Y-26 }, g).textContent = '▦ UNDERWORLD — AUTO-MAPPED';
+  if (!rooms.length){
+    S('text', { class:'ahint', x:ATLAS.X + W/2, y:ATLAS.Y + 46 }, g)
+      .textContent = 'connect the emulator and wander — every room you visit assembles here';
+    return;
+  }
+  // entrance index: room → pin names
+  const roomPins = {};
+  for (const id in state.assignments){
+    const r = state.assignments[id].room;
+    if (r != null) (roomPins[r] = roomPins[r] || []).push(nameOf(id));
+  }
+  for (const room of rooms){
+    const R = a.uw[room];
+    const col = room & 0x0F, row = (room >> 4) & 0x1F;
+    const x0 = ATLAS.X + col*ATLAS.CS, y0 = ATLAS.Y + row*ATLAS.CS;
+    const cell = S('g', { class:'acell', 'data-room':room }, g);
+    const attrs = { x:x0, y:y0, width:ATLAS.CS, height:ATLAS.CS, class:'aroom' };
+    if (R.d != null && R.d !== 0xFF) attrs.style = 'fill:hsl(' + DGN_HUE[(R.d >> 1) % 14] + ' 32% 26%)';
+    S('rect', attrs, cell);
+    const sc = (ATLAS.CS - 6)/512;
+    for (const pair of [['u','atr-u'],['l','atr-l']]){
+      for (const s of (R[pair[0]] || [])){
+        if (s.length < 4) continue;
+        let pts = '';
+        for (let i = 0; i < s.length; i += 2)
+          pts += (x0 + 3 + s[i]*sc).toFixed(1) + ',' + (y0 + 3 + s[i+1]*sc).toFixed(1) + ' ';
+        S('polyline', { class:'trail ' + pair[1], points: pts }, cell);
+      }
+    }
+    if (R.d !== 0xFF && R.d != null && R.f != null){
+      const f = R.f > 0x7F ? 'B' + (0x100 - R.f) : (R.f + 1) + 'F';
+      S('text', { class:'afl', x:x0 + ATLAS.CS - 3, y:y0 + 9 }, cell).textContent = f;
+    }
+    const nm = resolveInterior(room, R.d != null ? R.d : 0xFF) || hexw(room);
+    S('text', { class:'albl', x:x0 + 2, y:y0 + ATLAS.CS - 3 }, cell)
+      .textContent = nm.length > 10 ? nm.slice(0, 9) + '…' : nm;
+    const ports = R.p || [];
+    const ents = roomPins[room] || [];
+    if (!ports.length && ents.length) S('circle', { class:'aent', cx:x0 + 6, cy:y0 + 7, r:3.2 }, cell);
+    S('title', null, cell).textContent = nm + '  (' + hexw(room) + ')' +
+      (ports.length ? '\n' + ports.map(p => (p.w === 'D' ? '◑ ' : '◐ ') + nameOf(p.id)).join('\n')
+        : (ents.length ? '\nentrances: ' + ents.join(', ') : ''));
+  }
+  // room-to-room connections
+  const sc2 = (ATLAS.CS - 6)/512;
+  const inCell = (r, x, y) => [ATLAS.X + (r & 0x0F)*ATLAS.CS + 3 + x*sc2,
+                               ATLAS.Y + ((r >> 4) & 0x1F)*ATLAS.CS + 3 + y*sc2];
+  const vis = r => a.uw[r] && ((r >> 4) & 0x1F) < ATLAS.ROWS;
+  for (const e of (a.eg || [])){
+    if (!vis(e.a) || !vis(e.b)) continue;
+    const A = inCell(e.a, e.ax, e.ay), B = inCell(e.b, e.bx, e.by);
+    if (e.k === 'door'){
+      S('line', { class:'adoor', x1:A[0].toFixed(1), y1:A[1].toFixed(1), x2:B[0].toFixed(1), y2:B[1].toFixed(1) }, g);
+      continue;
+    }
+    const mx = (A[0] + B[0])/2, my = (A[1] + B[1])/2;
+    const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1;
+    const bow = Math.min(26, 8 + L*0.12);
+    const wg = S('g', { class:'awg' }, g);
+    S('path', { class:'awarp', d:'M' + A[0].toFixed(1) + ' ' + A[1].toFixed(1) +
+      ' Q' + (mx - dy/L*bow).toFixed(1) + ' ' + (my + dx/L*bow).toFixed(1) +
+      ' ' + B[0].toFixed(1) + ' ' + B[1].toFixed(1) }, wg);
+    S('circle', { class:'awend', cx:A[0].toFixed(1), cy:A[1].toFixed(1), r:2 }, wg);
+    S('circle', { class:'awend', cx:B[0].toFixed(1), cy:B[1].toFixed(1), r:2 }, wg);
+    S('title', null, wg).textContent =
+      (resolveInterior(e.a, 0xFF) || hexw(e.a)) + ' ⇄ ' + (resolveInterior(e.b, 0xFF) || hexw(e.b)) + '  (stairs / drop / warp)';
+  }
+  // overworld portals on top
+  for (const room of rooms){
+    for (const p of (a.uw[room].p || [])){
+      const P = inCell(room, p.x, p.y);
+      const pg = S('g', { class:'aport ' + (p.w === 'D' ? 'pd' : 'pl') }, g);
+      S('path', { d:'M' + (P[0]-3.6).toFixed(1) + ' ' + (P[1]+3.1).toFixed(1) +
+        ' L' + P[0].toFixed(1) + ' ' + (P[1]-4).toFixed(1) +
+        ' L' + (P[0]+3.6).toFixed(1) + ' ' + (P[1]+3.1).toFixed(1) + ' Z' }, pg);
+      S('title', null, pg).textContent = (p.w === 'D' ? 'Dark World: ' : 'Light World: ') + nameOf(p.id);
+    }
+  }
+}
+$('zU').addEventListener('click', () => {
+  const b = atlasVisitedBounds();
+  fitRect(b.x, b.y, b.w, b.h);
+});
+
+/* ============================================================
+   Emulator link — auto-mapping via SNI / QUsb2Snes websocket
+   Reads WRAM each ~95ms:
+     $7E0010 module · $7E001B indoors · $7E0020/22 Link Y/X
+     $7E008A OW area · $7E00A0 room · $7E00EE layer
+     $7E020E dungeon floor · $7E040C dungeon idx
+   ============================================================ */
+const TRK_URLS = ['ws://localhost:23074', 'ws://localhost:8080'];
+
+const trk = {
+  ws:null, attached:false, devices:[], dev:'',
+  pendBin:[], pendJson:[],
+  phase:'boot', lastOW:null, lastUW:null, session:null,
+  prevMod:-1, modStreak:0
+};
+let pumpToken = 0;
+
+function hexw(v){ return '0x' + v.toString(16).toUpperCase().padStart(2,'0'); }
+function trkStatus(txt, lamp){
+  $('tStatus').textContent = txt;
+  $('tLamp').className = 'lamp' + (lamp ? ' ' + lamp : '');
+}
+function trkLive(txt){ $('tLive').textContent = txt || ''; }
+function trkEvent(txt){ $('tEvent').textContent = txt || ''; }
+
+/* ---- usb2snes websocket plumbing ---- */
+function trkSendRaw(op, operands){
+  const msg = { Opcode:op, Space:'SNES' };
+  if (operands) msg.Operands = operands;
+  trk.ws.send(JSON.stringify(msg));
+}
+function trkJson(op, operands){
+  return new Promise((res, rej) => {
+    const p = { res, rej };
+    p.timer = setTimeout(() => {
+      const i = trk.pendJson.indexOf(p);
+      if (i >= 0) trk.pendJson.splice(i, 1);
+      rej(new Error(op + ' timed out'));
+    }, 1500);
+    trk.pendJson.push(p);
+    try { trkSendRaw(op, operands); }
+    catch (e) { clearTimeout(p.timer); trk.pendJson.pop(); rej(e); }
+  });
+}
+function trkRead(addrHex, len){
+  return new Promise((res, rej) => {
+    const p = { need:len, got:0, chunks:[], res, rej };
+    p.timer = setTimeout(() => {
+      const i = trk.pendBin.indexOf(p);
+      if (i >= 0) trk.pendBin.splice(i, 1);
+      rej(new Error('read timed out'));
+    }, 1500);
+    trk.pendBin.push(p);
+    try { trkSendRaw('GetAddress', [addrHex, len.toString(16)]); }
+    catch (e) { clearTimeout(p.timer); trk.pendBin.pop(); rej(e); }
+  });
+}
+function trkOnMessage(ev){
+  if (typeof ev.data === 'string'){
+    let j = null;
+    try { j = JSON.parse(ev.data); } catch (e) {}
+    const p = trk.pendJson.shift();
+    if (p){ clearTimeout(p.timer); p.res(j && Array.isArray(j.Results) ? j.Results : []); }
+    return;
+  }
+  const u = new Uint8Array(ev.data);
+  const p = trk.pendBin[0];
+  if (!p) return;
+  p.chunks.push(u); p.got += u.length;
+  if (p.got >= p.need){
+    trk.pendBin.shift();
+    clearTimeout(p.timer);
+    const out = new Uint8Array(p.got);
+    let o = 0;
+    for (const c of p.chunks){ out.set(c, o); o += c.length; }
+    p.res(out.subarray(0, p.need));
+  }
+}
+
+/* ---- connect / attach ---- */
+function trkToggle(){
+  if (trk.ws){ trkDisconnect('offline'); return; }
+  const url = ($('tUrl').value || '').trim() || TRK_URLS[0];
+  state.trk.url = url; save();
+  const alt = TRK_URLS.find(u => u !== url);
+  trkConnect(TRK_URLS.includes(url) && alt ? [url, alt] : [url]);
+}
+function trkConnect(urls){
+  const url = urls[0];
+  trkStatus('connecting ' + url.replace('ws://','') + '…', 'wait');
+  $('tConnect').textContent = 'Cancel';
+  let ws = null;
+  try { ws = new WebSocket(url); } catch (e) {}
+  if (!ws){ trkConnectFailed(urls); return; }
+  trk.ws = ws;
+  let opened = false;
+  try { ws.binaryType = 'arraybuffer'; } catch (e) {}
+  ws.onmessage = trkOnMessage;
+  ws.onopen = async () => {
+    opened = true;
+    $('tConnect').textContent = 'Disconnect';
+    trkStatus('connected · listing devices…', 'wait');
+    try { await trkRefreshDevices(true); }
+    catch (e) { if (trk.ws === ws) trkDisconnect('no reply — is that really SNI / QUsb2Snes?'); }
+  };
+  ws.onclose = () => {
+    if (trk.ws !== ws) return;
+    if (!opened) trkConnectFailed(urls);
+    else trkCleanup('connection dropped — press Connect to retry', 'err');
+  };
+  ws.onerror = () => {};
+}
+function trkConnectFailed(urls){
+  trk.ws = null;
+  const rest = urls.slice(1);
+  if (rest.length){ trkConnect(rest); return; }
+  trkCleanup('couldn\u2019t reach the server — start SNI / QUsb2Snes first. Inside claude.ai the sandbox may block localhost: download this file and open it in your browser.', 'err');
+}
+async function trkRefreshDevices(autoAttach){
+  const res = await trkJson('DeviceList');
+  if (!trk.ws) return;
+  trk.devices = res || [];
+  const sel = $('tDev');
+  sel.innerHTML = '';
+  for (const d of trk.devices){
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    sel.appendChild(o);
+  }
+  $('tDevRow').hidden = trk.devices.length === 0;
+  if (!trk.devices.length){
+    trkStatus('no devices — hook the emulator to SNI / QUsb2Snes, I\u2019ll keep looking…', 'wait');
+    setTimeout(() => {
+      if (trk.ws && !trk.attached) trkRefreshDevices(true).catch(() => {});
+    }, 2000);
+    return;
+  }
+  const want = trk.devices.includes(trk.dev) ? trk.dev : trk.devices[0];
+  sel.value = want;
+  if (autoAttach) await trkAttach(want);
+}
+async function trkAttach(dev){
+  trk.dev = dev;
+  trk.attached = false;
+  pumpToken++;
+  try { trkSendRaw('Attach', [dev]); } catch (e) { return; }
+  let info = [];
+  try { info = await trkJson('Info'); }
+  catch (e) { trkStatus('couldn\u2019t attach — pick another device', 'err'); return; }
+  if (!trk.ws) return;
+  trk.attached = true;
+  trk.phase = 'boot'; trk.lastOW = null; trk.lastUW = null; trk.session = null;
+  trk.prevMod = -1; trk.modStreak = 0;
+  const rom = info && info[2] ? ' · ' + String(info[2]).split(/[\\/]/).pop() : '';
+  trkStatus('tracking ' + dev + rom, 'ok');
+  trkEvent('');
+  trkPump();
+}
+
+/* ---- poll pump ---- */
+async function trkPump(){
+  const tok = ++pumpToken;
+  while (trk.ws && trk.attached && pumpToken === tok){
+    let a, b;
+    try {
+      a = await trkRead('F50010', 0x200);
+      b = await trkRead('F5040C', 1);
+    } catch (e) {
+      if (pumpToken === tok && trk.ws) trkDisconnect('lost the feed — press Connect to retry');
+      return;
+    }
+    if (pumpToken !== tok) return;
+    try { trkFeed(a, b); } catch (e) {}
+    await new Promise(r => setTimeout(r, 95));
+  }
+}
+
+/* ---- sample + state machine ---- */
+function trkFeed(a, b){
+  const s = {
+    mod:  a[0x00],
+    ind:  a[0x0B],
+    y:    a[0x10] | (a[0x11] << 8),
+    x:    a[0x12] | (a[0x13] << 8),
+    area: a[0x7A],
+    room: a[0x90] | (a[0x91] << 8),
+    lyr:  a[0xDE],
+    fl:   a[0x1FE],
+    dgn:  b[0]
+  };
+  if (s.mod === trk.prevMod) trk.modStreak++;
+  else { trk.prevMod = s.mod; trk.modStreak = 1; }
+  trkPaintLive(s);
+  if (trk.modStreak < 2) return;             // resist transition + glitched reads
+  const m = s.mod;
+  if (m <= 0x05 || m === 0x14 || m === 0x17 || m === 0x1B){
+    trk.phase = 'boot'; trk.session = null; trk.lastOW = null; trk.lastUW = null; return;
+  }
+  if (m === 0x12){ trk.phase = 'other'; trk.session = null; trk.lastUW = null; return; }
+  if (m === 0x09 && s.ind === 0){
+    if (trk.phase === 'uw') trkExit(s);
+    trk.lastOW = { w:(s.area & 0x40) ? 'D' : 'L', area:s.area, xp:s.x / 40.96, yp:s.y / 40.96 };
+    trk.phase = 'ow';
+    trkTrail(s);
+    return;
+  }
+  if (m === 0x07 && s.ind === 1){
+    if (trk.phase !== 'uw'){ trk.lastUW = null; trkEntry(s); }
+    else {
+      if (trk.lastUW && trk.lastUW.room !== s.room) trkEdge(trk.lastUW, s);
+      if (trk.session && !trk.session.rooms.has(s.room)){
+        trk.session.rooms.add(s.room);
+        if (!trk.session.interior){
+          const nm = resolveInterior(s.room, s.dgn);
+          if (nm){ trk.session.interior = nm; trkLateName(nm); }
+        }
+      }
+    }
+    trk.lastUW = { room:s.room, x:s.x & 511, y:s.y & 511, ax:s.x, ay:s.y };
+    trk.phase = 'uw';
+    trkTrail(s);
+    return;
+  }
+  if (m === 0x15){ trk.lastUW = null; return; }   // mirror warp: don't fake an edge
+  if (m === 0x0B){
+    if (trk.phase === 'uw' && trk.session){
+      trkEvent('came out into a special area');
+      trk.session = null; trk.lastUW = null;
+    }
+    trk.phase = 'other';
+    return;
+  }
+  // 0x06, 0x08, 0x0E, 0x0F, 0x10, 0x11, 0x13, 0x15… : transitional, keep phase
+}
+
+/* ---- trail capture ---- */
+function trkTrail(s){
+  if (!$('ckAuto').checked) return;
+  const a = ensureAtlas();
+  let drew = false;
+  if (s.mod === 0x09){
+    const w = (s.area & 0x40) ? 'D' : 'L';
+    drew = trailPush(a.ow[w], s.x, s.y, 12, 220, 2600);
+    const fc = s.x >> 9, fr = s.y >> 9;
+    if (fc < 8 && fr < 8 && !a.seen[w][(fr << 3) | fc]){ a.seen[w][(fr << 3) | fc] = 1; drew = true; }
+  } else if (s.mod === 0x07){
+    const R = a.uw[s.room] || (a.uw[s.room] = { u:[], l:[], d:null, f:null });
+    if (s.dgn !== 0xFF){ R.d = s.dgn; R.f = s.fl; }
+    else if (R.d == null) R.d = 0xFF;
+    drew = trailPush(R[s.lyr ? 'l' : 'u'], s.x & 511, s.y & 511, 8, 140, 240);
+  }
+  if (drew){ atlasDirty(); save(); }
+}
+
+/* A doorway between rooms when coords stay continuous; stairs / drops /
+   warps when Link teleports. Deduped on quantized positions. */
+function trkEdge(prev, s){
+  if (!$('ckAuto').checked) return;
+  const a = ensureAtlas();
+  const far = Math.hypot(s.x - prev.ax, s.y - prev.ay) > 256;
+  const k = far ? 'warp' : 'door';
+  let r1 = prev.room, x1 = prev.x, y1 = prev.y, r2 = s.room, x2 = s.x & 511, y2 = s.y & 511;
+  if (r2 < r1){ const t = [r1, x1, y1]; r1 = r2; x1 = x2; y1 = y2; r2 = t[0]; x2 = t[1]; y2 = t[2]; }
+  const q = v => v >> 5;
+  for (const e of a.eg){
+    if (e.a === r1 && e.b === r2 && e.k === k &&
+        q(e.ax) === q(x1) && q(e.ay) === q(y1) && q(e.bx) === q(x2) && q(e.by) === q(y2)) return;
+  }
+  if (a.eg.length > 600) a.eg.shift();
+  a.eg.push({ a:r1, ax:x1, ay:y1, b:r2, bx:x2, by:y2, k });
+  atlasDirty(); save();
+}
+function recPortal(room, x, y, pin){
+  const a = ensureAtlas();
+  const R = a.uw[room] || (a.uw[room] = { u:[], l:[], d:null, f:null });
+  R.p = R.p || [];
+  if (R.p.some(p => p.id === pin.id) || R.p.length > 7) return;
+  R.p.push({ x, y, w:pin.w, id:pin.id });
+  atlasDirty(); save();
+}
+function resolveInterior(room, dgn){
+  if (state.roomNames && state.roomNames[room]) return state.roomNames[room];
+  if (ROOMS[room]) return ROOMS[room];
+  if (dgn !== 0xFF && (dgn & 1) === 0 && dgn <= 0x1A) return DGN_NAMES[dgn >> 1];
+  return null;
+}
+function matchPin(ow){
+  let best = null, second = null;
+  for (const e of ENTRANCES()){
+    if (e.w !== ow.w) continue;
+    let d = Math.hypot(e.x - ow.xp, e.y - ow.yp);
+    if (e.area != null && e.area === ow.area) d *= 0.5;
+    if (!best || d < best.d){ second = best; best = { e, d }; }
+    else if (!second || d < second.d) second = { e, d };
+  }
+  if (!best) return null;
+  if (best.d > 9) return { pin:best.e, weak:true, ambig:false };
+  return { pin:best.e, weak:false, ambig:!!(second && second.d < best.d * 1.4) };
+}
+function noteTag(a, tag){
+  if (!(a.note || '').includes(tag)) a.note = (a.note ? a.note + ' · ' : '') + tag;
+}
+
+/* Entry: only undo/log when something is actually NEW.
+   Repeat visits flash the pin and update the live line, nothing else. */
+function trkEntry(s){
+  const nm = resolveInterior(s.room, s.dgn);
+  const m = trk.lastOW ? matchPin(trk.lastOW) : null;
+  trk.session = {
+    entryPinId: m ? m.pin.id : null,
+    room: s.room,
+    interior: nm,
+    rooms: new Set([s.room])
+  };
+  if (!$('ckAuto').checked) return;
+  const label = nm || ('Room ' + hexw(s.room));
+  if (!m){ trkEvent('appeared in ' + label); return; }
+  recPortal(s.room, s.x & 511, s.y & 511, m.pin);
+  const a0 = asg(m.pin.id);
+  const sawTag = '⚡ saw ' + label;
+  const newDest = !a0 || !a0.dest;
+  const newSaw  = a0 && a0.dest && a0.dest !== label && !a0.link && !(a0.note || '').includes(sawTag);
+  const newFlag = (m.weak || m.ambig) && !((a0 && a0.note) || '').includes('⚡ check pin');
+  if (!newDest && !newSaw && !newFlag){
+    if (a0 && a0.room !== s.room){ a0.room = s.room; save(); }   // silent metadata
+    flashDot(m.pin.id);
+    trkEvent('back inside ' + nameOf(m.pin.id));
+    return;
+  }
+  pushUndo();
+  const a = ensureAsg(m.pin.id);
+  a.room = s.room;
+  if (newDest) a.dest = label;
+  else if (newSaw) noteTag(a, sawTag);
+  if (newFlag) noteTag(a, '⚡ check pin');
+  state.seq++;
+  state.log.push({ s:state.seq, t:Date.now(), e:m.pin.id, x:'⚡ → ' + label + (m.ambig ? ' ?' : '') });
+  trkEvent('mapped ' + nameOf(m.pin.id) + ' → ' + label);
+  if (selId === m.pin.id) select(selId);
+  flashDot(m.pin.id);
+  refresh(); save();
+}
+function trkLateName(nm){
+  const sess = trk.session;
+  if (!sess || !sess.entryPinId || !$('ckAuto').checked) return;
+  const a = asg(sess.entryPinId);
+  if (a && a.dest && a.dest.indexOf('Room 0x') === 0){
+    a.dest = nm;
+    trkEvent('that was ' + nm);
+    refresh(); save();
+  }
+}
+/* Exit: same door = quiet feedback; new door = link the connector;
+   spawned-inside exits only log the first time. */
+function trkExit(s){
+  const sess = trk.session;
+  trk.session = null;
+  const lu = trk.lastUW;
+  trk.lastUW = null;
+  if (!sess || !$('ckAuto').checked) return;
+  const m = matchPin({ w:(s.area & 0x40) ? 'D' : 'L', area:s.area, xp:s.x / 40.96, yp:s.y / 40.96 });
+  if (!m) return;
+  if (lu) recPortal(lu.room, lu.x, lu.y, m.pin);
+  const nm = sess.interior;
+  if (sess.entryPinId && m.pin.id === sess.entryPinId){
+    flashDot(m.pin.id);
+    trkEvent('back outside at ' + nameOf(m.pin.id));
+    return;
+  }
+  if (sess.entryPinId){
+    const A0 = asg(sess.entryPinId);
+    if (A0 && A0.link === m.pin.id){
+      flashDot(m.pin.id);
+      trkEvent('through ' + (nm || 'the connector') + ' again');
+      return;
+    }
+    pushUndo();
+    doLink(sess.entryPinId, m.pin.id);
+    const A = ensureAsg(sess.entryPinId), B = ensureAsg(m.pin.id);
+    if (nm){
+      if (!A.dest || A.dest.indexOf('Room 0x') === 0) A.dest = nm;
+      if (!B.dest || B.dest.indexOf('Room 0x') === 0) B.dest = nm;
+    }
+    if (B.room == null) B.room = sess.room;
+    if (m.weak || m.ambig) noteTag(B, '⚡ check pin');
+    state.seq++;
+    state.log.push({ s:state.seq, t:Date.now(), e:sess.entryPinId,
+      x:'⚡ ⇆ ' + nameOf(m.pin.id) + (nm ? ' (via ' + nm + ')' : '') });
+    trkEvent('linked ' + nameOf(sess.entryPinId) + ' ⇆ ' + nameOf(m.pin.id));
+    flashDot(m.pin.id); flashDot(sess.entryPinId);
+    if (selId === sess.entryPinId || selId === m.pin.id) select(selId);
+    refresh(); save();
+    return;
+  }
+  // entered without a known pin (e.g. spawned indoors after S&Q)
+  const B0 = asg(m.pin.id);
+  const label = nm || ('Room ' + hexw(sess.room));
+  if (B0 && B0.dest === label){
+    flashDot(m.pin.id);
+    trkEvent('back outside at ' + nameOf(m.pin.id));
+    return;
+  }
+  pushUndo();
+  const B = ensureAsg(m.pin.id);
+  if (!B.dest) B.dest = label;
+  if (B.room == null) B.room = sess.room;
+  state.seq++;
+  state.log.push({ s:state.seq, t:Date.now(), e:m.pin.id, x:'⚡ → ' + label + ' (exited here)' });
+  trkEvent('mapped ' + nameOf(m.pin.id) + ' → ' + label);
+  flashDot(m.pin.id);
+  refresh(); save();
+}
+function trkPaintLive(s){
+  if (!trk.attached) return;
+  if (s.mod === 0x09 || s.mod === 0x0B){
+    trkLive('OW ' + hexw(s.area) + ' · ' + ((s.area & 0x40) ? 'DW' : 'LW') +
+      ' · (' + (s.x / 40.96).toFixed(1) + ', ' + (s.y / 40.96).toFixed(1) + ')');
+  } else if (s.mod === 0x07){
+    const nm = resolveInterior(s.room, s.dgn);
+    const fl = (s.dgn !== 0xFF) ? (s.fl > 0x7F ? ' · B' + (0x100 - s.fl) : ' · ' + (s.fl + 1) + 'F') : '';
+    trkLive('inside ' + hexw(s.room) + (nm ? ' — ' + nm : '') + fl + (s.lyr ? ' · lower' : ''));
+  } else if (s.mod <= 0x05){
+    trkLive('title / file select');
+  }
+}
+
+/* ---- teardown ---- */
+function trkDisconnect(msg){
+  const ws = trk.ws;
+  trk.ws = null;
+  if (ws){
+    try { ws.onclose = null; ws.onmessage = null; ws.close(); } catch (e) {}
+  }
+  trkCleanup(msg, msg && msg !== 'offline' ? 'err' : '');
+}
+function trkCleanup(msg, lamp){
+  pumpToken++;
+  trk.ws = null; trk.attached = false; trk.devices = [];
+  for (const p of trk.pendBin.splice(0)){ clearTimeout(p.timer); }
+  for (const p of trk.pendJson.splice(0)){ clearTimeout(p.timer); }
+  trk.session = null; trk.lastOW = null; trk.lastUW = null; trk.phase = 'boot';
+  trk.prevMod = -1; trk.modStreak = 0;
+  $('tDevRow').hidden = true;
+  $('tConnect').textContent = 'Connect';
+  trkStatus(msg || 'offline', lamp || '');
+  trkLive(''); trkEvent('');
+}
+
+$('tConnect').addEventListener('click', trkToggle);
+$('tDev').addEventListener('change', () => {
+  if (trk.ws) trkAttach($('tDev').value).catch(() => {});
+});
+$('ckAuto').addEventListener('change', () => {
+  state.trk.auto = $('ckAuto').checked;
+  save();
+});
+$('ckFog').addEventListener('change', () => {
+  state.trk.fog = $('ckFog').checked;
+  renderFog();
+  save();
+});
+
+/* ============================================================
+   Refresh / init
+   ============================================================ */
+function refresh(){
+  updateDots();
+  renderLinks();
+  renderLog();
+  renderStats();
+}
+function rebuild(){
+  rebuildIndex();
+  buildDots();
+  renderTrails();
+  renderAtlas();
+  renderFog();
+  refresh();
+}
+
+(async function init(){
+  detectBackend();
+  rebuildIndex();
+  buildTerrain();
+  const saved = await storeLoad();
+  if (saved && typeof saved === 'object' && saved.assignments){
+    state = {
+      assignments: saved.assignments || {},
+      log: Array.isArray(saved.log) ? saved.log : [],
+      customs: Array.isArray(saved.customs) ? saved.customs : [],
+      seq: typeof saved.seq === 'number' ? saved.seq : 0,
+      roomNames: (saved.roomNames && typeof saved.roomNames === 'object') ? saved.roomNames : {},
+      art: saved.art !== false,
+      trk: (saved.trk && typeof saved.trk.url === 'string') ? { url: saved.trk.url, auto: saved.trk.auto !== false, fog: saved.trk.fog !== false } : { url:'', auto:true },
+      atlas: (saved.atlas && typeof saved.atlas === 'object') ? saved.atlas : { ow:{ L:[], D:[] }, uw:{}, seen:{ L:{}, D:{} } }
+    };
+  }
+  if (state.trk && state.trk.url) $('tUrl').value = state.trk.url;
+  if (state.trk && state.trk.auto === false) $('ckAuto').checked = false;
+  if (state.trk && state.trk.fog === false) $('ckFog').checked = false;
+  applyArt();
+  ensureAtlas();
+  rebuild();
+  paintSave(backend === 'memory' ? false : true);
+  if (window.innerWidth < 900) fitRect(15, 15, 800, 790);
+  else fitRect(0, 0, 1720, 815);
+  $('qAt').focus();
+})();
+
+</script>
+</body>
+</html>
