@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrance Mapper · ALTTP Randomizer</title>
+<title>Navi Navigator · ALTTP Randomizer</title>
 <style>
 :root{
   --bg:#14121d; --panel:#231d31; --panel2:#2d2640; --ink:#0b0a12;
   --text:#ebe3cb; --dim:#9a91b5; --gold:#f4b41a; --green:#5fc861;
   --blue:#58a6e8; --red:#d4504a; --violet:#c084fc;
+  --navi:#8be9fd; --navi2:#e3fbff;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 [hidden]{display:none !important;}
@@ -123,6 +124,16 @@ body.artmode .fogcell{opacity:.62;}
 .aport path{stroke:var(--ink); stroke-width:1;}
 .aport.pl path{fill:var(--gold);}
 .aport.pd path{fill:#f0a3ff;}
+.navi{width:36px; height:36px; flex:0 0 auto; animation:navibob 2.8s ease-in-out infinite;}
+.navi .nw{fill:#fff; opacity:.85;}
+.navi .nw2{opacity:.5;}
+.navi .nglow{fill:var(--navi); opacity:.28;}
+.navi .norb{fill:var(--navi2); stroke:var(--navi); stroke-width:1.6;}
+@keyframes navibob{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+header h1{color:var(--navi2); text-shadow:0 0 12px rgba(139,233,253,.5);}
+.popmenu{position:absolute; top:44px; right:10px; display:flex; flex-direction:column; gap:4px;
+  background:var(--panel); border:3px solid var(--ink); padding:6px; z-index:30;}
+.popmenu .btn{text-align:left; white-space:nowrap;}
 .tevt{color:var(--green);}
 
 /* ---------- combo popups ---------- */
@@ -259,10 +270,17 @@ kbd{background:#171323; border:2px solid var(--ink); padding:0 4px; font-size:10
 
 <header>
   <div class="brand">
-    <div class="triforce">▲<br>▲▲</div>
+    <svg class="navi" viewBox="0 0 26 26" aria-hidden="true">
+      <ellipse class="nw" cx="7" cy="9" rx="6" ry="3.4" transform="rotate(-28 7 9)"/>
+      <ellipse class="nw" cx="19" cy="9" rx="6" ry="3.4" transform="rotate(28 19 9)"/>
+      <ellipse class="nw nw2" cx="8" cy="15" rx="4.6" ry="2.6" transform="rotate(-44 8 15)"/>
+      <ellipse class="nw nw2" cx="18" cy="15" rx="4.6" ry="2.6" transform="rotate(44 18 15)"/>
+      <circle class="nglow" cx="13" cy="13" r="8"/>
+      <circle class="norb" cx="13" cy="13" r="4.6"/>
+    </svg>
     <div>
-      <h1>Entrance Mapper</h1>
-      <div class="sub">A LINK TO THE PAST · RANDOMIZER TRANSIT LOG</div>
+      <h1>Navi Navigator</h1>
+      <div class="sub">HEY! LISTEN! · ALTTP RANDOMIZER TRANSIT LOG</div>
     </div>
   </div>
   <div class="stats" id="stats"></div>
@@ -376,6 +394,13 @@ kbd{background:#171323; border:2px solid var(--ink); padding:0 4px; font-size:10
       <button class="btn" id="zU">UW</button>
       <button class="btn" id="zA">All</button>
       <button class="btn" id="zArt" title="Toggle real game maps / schematic">ART</button>
+      <button class="btn" id="zPop" title="Pop out a live map window (second monitor / OBS)">⧉</button>
+    </div>
+    <div class="popmenu" id="popMenu" hidden>
+      <button class="btn" data-pop="all">⧉ Both worlds</button>
+      <button class="btn" data-pop="L">⧉ Light World</button>
+      <button class="btn" data-pop="D">⧉ Dark World</button>
+      <button class="btn" data-pop="U">⧉ Underworld atlas</button>
     </div>
     <div id="tip" hidden></div>
   </div>
@@ -1237,6 +1262,7 @@ $('zA').addEventListener('click', () => fitRect(0, 0, 1720, 815));
 function applyArt(){
   const on = state.art !== false && !window.__artFail;
   document.body.classList.toggle('artmode', on);
+  popSeq++;
   const b = $('zArt');
   if (b){ b.classList.toggle('on', on); b.hidden = !!window.__artFail; }
 }
@@ -1249,6 +1275,79 @@ $('zArt').addEventListener('click', () => {
   state.art = state.art === false;
   applyArt();
   save();
+});
+
+/* ---- pop-out live map mirrors (second monitor / OBS window capture) ---- */
+const POPS = [];
+let popSeq = 1, popLast = 0, popTimer = null;
+const POP_REGIONS = {
+  all: { vb:[0, 0, 1720, 815],   w:1100, h:540, t:'Both Worlds' },
+  L:   { vb:[15, 15, 800, 790],  w:660,  h:660, t:'Light World' },
+  D:   { vb:[905, 15, 800, 790], w:660,  h:660, t:'Dark World' },
+  U:   { vb:null,                w:720,  h:780, t:'Underworld Atlas' }
+};
+function popVB(region){
+  if (region !== 'U') return POP_REGIONS[region].vb;
+  const b = atlasVisitedBounds();
+  return [b.x, b.y, b.w, b.h];
+}
+function popOut(region){
+  const R = POP_REGIONS[region];
+  let win = null;
+  try { win = window.open('', 'navi_' + region, 'width=' + R.w + ',height=' + R.h); } catch (e) {}
+  if (!win){ trkEvent('Hey! pop-up blocked — allow pop-ups for this page first'); return; }
+  const doc = win.document;
+  doc.title = 'Navi Navigator — ' + R.t;
+  doc.head.innerHTML = '';
+  const base = doc.createElement('base');
+  base.href = location.href;
+  doc.head.appendChild(base);
+  const st = doc.createElement('style');
+  st.textContent = ((document.querySelector('style') || {}).textContent || '') +
+    '\nhtml,body{margin:0;height:100%;background:var(--bg,#14121d);overflow:hidden}svg{display:block;width:100vw;height:100vh}';
+  doc.head.appendChild(st);
+  doc.body.innerHTML = '<svg id="pmap" xmlns="http://www.w3.org/2000/svg" viewBox="' + popVB(region).join(' ') +
+    '" preserveAspectRatio="xMidYMid meet"><g id="pvp"></g></svg>';
+  const p = { win, region };
+  POPS.push(p);
+  popPaint(p);
+  if (!popTimer) popTimer = setInterval(popTick, 800);
+}
+function popPaint(p){
+  try {
+    const doc = p.win.document;
+    doc.body.className = document.body.className;
+    const g = doc.getElementById('pvp');
+    if (g) g.innerHTML = $('vp').innerHTML;
+    if (p.region === 'U'){
+      const sv = doc.getElementById('pmap');
+      if (sv) sv.setAttribute('viewBox', popVB('U').join(' '));
+    }
+  } catch (e) {}
+}
+function popTick(){
+  for (let i = POPS.length - 1; i >= 0; i--){
+    if (!POPS[i].win || POPS[i].win.closed) POPS.splice(i, 1);
+  }
+  if (!POPS.length){ clearInterval(popTimer); popTimer = null; return; }
+  if (popLast === popSeq) return;
+  popLast = popSeq;
+  for (const p of POPS) popPaint(p);
+}
+$('zPop').addEventListener('click', ev => {
+  ev.stopPropagation();
+  $('popMenu').hidden = !$('popMenu').hidden;
+});
+$('popMenu').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-pop]');
+  if (!b) return;
+  ev.stopPropagation();
+  $('popMenu').hidden = true;
+  popOut(b.getAttribute('data-pop'));
+});
+document.addEventListener('click', () => {
+  const m = $('popMenu');
+  if (m && !m.hidden) m.hidden = true;
 });
 
 function centerOn(id){
@@ -1570,7 +1669,7 @@ $('bExport').addEventListener('click', () => {
           const blob = new Blob([json], { type:'application/json' });
           const a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
-          a.download = 'alttp-entrance-map.json';
+          a.download = 'navi-navigator-map.json';
           document.body.appendChild(a); a.click(); a.remove();
           setTimeout(() => URL.revokeObjectURL(a.href), 2000);
           toast('Downloaded');
@@ -1653,6 +1752,7 @@ $('bHelp').addEventListener('click', () => {
     '<p><b>Keys:</b> <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Esc</kbd> closes things.</p>' +
     '<p><b>Emulator link:</b> run <b>SNI</b> (or QUsb2Snes) and hook your emulator to it — snes9x-rr + Connector.lua, a snes9x-nwa build, BizHawk, RetroArch with the bsnes-mercury core, or an FXPak — then hit Connect. Entrances, connectors and dungeons map themselves as you play, and everything stays editable. Plain snes9x cannot expose memory, so use one of those builds. If the connection is blocked inside claude.ai, download the file and open it locally.</p>' +
     '<p><b>Auto-map atlas:</b> while connected, your overworld path draws onto both world maps, and every interior room you visit assembles into a stitched underworld atlas below them — the <b>UW</b> button jumps to it. Cells are tinted by dungeon and tagged with their floor; dashed trails mean the lower layer. Gold and pink door markers show where each room touches the Light or Dark World (hover one for the entrance name), bright ticks bridge doorways between adjacent rooms, and dashed green curves trace stairs, drops and warps between distant ones — the map a door-randomized seed needs. The overworld fogs itself too: screens you have not stepped on stay shaded until you do — toggle it in the Emulator Link card. For the real game maps, keep images/map.png and images/darkworld.png in an images folder next to this file: the ART button switches between them and the built-in schematic, and if the files are missing it falls back automatically. The log only records discoveries, so repeat trips just flash the pin.</p>' +
+    '<p><b>Pop-out maps:</b> the ⧉ button opens any map — both worlds, either world alone, or the underworld atlas — in its own window that keeps updating live as you play. Perfect for a second monitor or an OBS window capture.</p>' +
     '<p><b>Saving:</b> automatic. As a Claude artifact it saves to the cloud; saved as a local file it uses your browser\'s storage. Export makes a portable backup either way.</p>' +
     '<div class="row"><button class="btn gold" data-x="ok">Got it</button></div>',
     box => box.addEventListener('click', ev => {
@@ -1735,7 +1835,7 @@ function trailPush(segs, x, y, minD, brk, budget){
 let atlasTimer = null;
 function atlasDirty(){
   if (atlasTimer) return;
-  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); }, 700);
+  atlasTimer = setTimeout(() => { atlasTimer = null; renderTrails(); renderAtlas(); renderFog(); popSeq++; }, 700);
 }
 function renderTrails(){
   const g = $('trails'); if (!g) return;
@@ -1801,7 +1901,7 @@ function renderAtlas(){
   S('text', { class:'ptitle', 'text-anchor':'middle', x:ATLAS.X + W/2, y:ATLAS.Y-26 }, g).textContent = '▦ UNDERWORLD — AUTO-MAPPED';
   if (!rooms.length){
     S('text', { class:'ahint', x:ATLAS.X + W/2, y:ATLAS.Y + 46 }, g)
-      .textContent = 'connect the emulator and wander — every room you visit assembles here';
+      .textContent = 'Hey! Listen! Connect the emulator and wander — every room you visit assembles here';
     return;
   }
   // entrance index: room → pin names
@@ -2220,7 +2320,7 @@ function trkEntry(s){
   if (newFlag) noteTag(a, '⚡ check pin');
   state.seq++;
   state.log.push({ s:state.seq, t:Date.now(), e:m.pin.id, x:'⚡ → ' + label + (m.ambig ? ' ?' : '') });
-  trkEvent('mapped ' + nameOf(m.pin.id) + ' → ' + label);
+  trkEvent('Hey! mapped ' + nameOf(m.pin.id) + ' → ' + label);
   if (selId === m.pin.id) select(selId);
   flashDot(m.pin.id);
   refresh(); save();
@@ -2231,7 +2331,7 @@ function trkLateName(nm){
   const a = asg(sess.entryPinId);
   if (a && a.dest && a.dest.indexOf('Room 0x') === 0){
     a.dest = nm;
-    trkEvent('that was ' + nm);
+    trkEvent('Look! that was ' + nm);
     refresh(); save();
   }
 }
@@ -2271,7 +2371,7 @@ function trkExit(s){
     state.seq++;
     state.log.push({ s:state.seq, t:Date.now(), e:sess.entryPinId,
       x:'⚡ ⇆ ' + nameOf(m.pin.id) + (nm ? ' (via ' + nm + ')' : '') });
-    trkEvent('linked ' + nameOf(sess.entryPinId) + ' ⇆ ' + nameOf(m.pin.id));
+    trkEvent('Listen! linked ' + nameOf(sess.entryPinId) + ' ⇆ ' + nameOf(m.pin.id));
     flashDot(m.pin.id); flashDot(sess.entryPinId);
     if (selId === sess.entryPinId || selId === m.pin.id) select(selId);
     refresh(); save();
@@ -2291,7 +2391,7 @@ function trkExit(s){
   if (B.room == null) B.room = sess.room;
   state.seq++;
   state.log.push({ s:state.seq, t:Date.now(), e:m.pin.id, x:'⚡ → ' + label + ' (exited here)' });
-  trkEvent('mapped ' + nameOf(m.pin.id) + ' → ' + label);
+  trkEvent('Hey! mapped ' + nameOf(m.pin.id) + ' → ' + label);
   flashDot(m.pin.id);
   refresh(); save();
 }
@@ -2349,6 +2449,7 @@ $('ckFog').addEventListener('change', () => {
    Refresh / init
    ============================================================ */
 function refresh(){
+  popSeq++;
   updateDots();
   renderLinks();
   renderLog();
